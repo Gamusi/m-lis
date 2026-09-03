@@ -4561,6 +4561,9 @@ const app = {
             if (nameLower.includes('hcg') && nameLower.includes('blood')) {
               placeholderText = "e.g. 150.0 (Non-pregnant: <5.0, Pregnant: >=25.0 mIU/mL)";
               clinicalHint = '<small style="display:block; margin-top:4px; color:var(--text-muted); font-size:0.75rem;"><b>Pregnancy Staging:</b> Baseline < 5.0 mIU/mL (Non-pregnant); >= 25.0 mIU/mL (Positive). Normal early gestation exhibits rapid doubling times (every 48-72h).</small>';
+            } else if (nameLower.indexOf('percent') !== -1 || nameLower.indexOf('%') !== -1) {
+              placeholderText = "e.g. 32.5 (Normal: >= 25.0%)";
+              clinicalHint = '<small style="display:block; margin-top:6px; padding:6px 8px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:4px; color:var(--text-dark); font-size:0.8rem;"><b>Clinical Decision Support:</b> CD4% < 25.0% defines Pediatric Advanced HIV Disease (AHD) in clients under 5 years (< 60 months). Immediate pediatric ART regimen escalation and opportunistic infection screening indicated.</small>';
             } else if (nameLower.indexOf('cd4') !== -1 && nameLower.indexOf('rapid') === -1 && nameLower.indexOf('strip') === -1 && nameLower.indexOf('rdt') === -1) {
               placeholderText = "e.g. 450 (Adult Normal: 500 - 1500 cells/µL)";
               clinicalHint = '<small style="display:block; margin-top:6px; padding:6px 8px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:4px; color:var(--text-dark); font-size:0.8rem;"><b>Clinical Decision Support:</b> < 200 cells/µL defines Advanced HIV Disease (AHD) triggering TB-LAM & CrAg screening. For pediatric clients under 5 years (< 60 months), evaluate concurrent CD4% (< 25% defines Pediatric AHD).</small>';
