@@ -4566,7 +4566,7 @@ const app = {
               clinicalHint = '<small style="display:block; margin-top:6px; padding:6px 8px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:4px; color:var(--text-dark); font-size:0.8rem;"><b>Clinical Decision Support:</b> CD4% < 25.0% defines Pediatric Advanced HIV Disease (AHD) in clients under 5 years (< 60 months). Immediate pediatric ART regimen escalation and opportunistic infection screening indicated.</small>';
             } else if (nameLower.indexOf('cd4') !== -1 && nameLower.indexOf('rapid') === -1 && nameLower.indexOf('strip') === -1 && nameLower.indexOf('rdt') === -1) {
               placeholderText = "e.g. 450 (Adult Normal: 500 - 1500 cells/µL)";
-              clinicalHint = '<small style="display:block; margin-top:6px; padding:6px 8px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:4px; color:var(--text-dark); font-size:0.8rem;"><b>Clinical Decision Support:</b> < 200 cells/µL defines Advanced HIV Disease (AHD) triggering TB-LAM & CrAg screening. For pediatric clients under 5 years (< 60 months), evaluate concurrent CD4% (< 25% defines Pediatric AHD).</small>';
+              clinicalHint = '<small style="display:block; margin-top:6px; padding:6px 8px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:4px; color:var(--text-dark); font-size:0.8rem;"><b>Clinical Decision Support:</b> Absolute CD4 count < 200 cells/µL defines Advanced HIV Disease (AHD). Immediately initiate the national AHD package of care, including Urine TB-LAM, Sputum GeneXpert Ultra, and Serum CrAg screening.</small>';
             }
 
             singleContainer.innerHTML = `
