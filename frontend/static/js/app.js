@@ -332,7 +332,7 @@ const app = {
 
       if (appTitleEl) appTitleEl.textContent = this.theme.app_title || 'M-LIS';
       if (facNameEl) facNameEl.textContent = this.theme.facility_name || 'Ahmadiyya Muslim Hospital';
-      if (footerEl) footerEl.textContent = this.theme.footer_text || 'M-LIS — Laboratory Information System';
+      if (footerEl) footerEl.textContent = this.theme.footer_text || '© M-LIS 2026';
       if (logoEl) logoEl.src = this.theme.logo_path || '/assets/branding/logo_white.png';
     } catch (e) {
       console.warn('Theme loading warning:', e);
@@ -6049,7 +6049,7 @@ const app = {
     
     form.onsubmit = __async(function*(e) {
       e.preventDefault();
-      yield this.saveTestConfig();
+      yield app.saveTestConfig();
     });
   }),
 
