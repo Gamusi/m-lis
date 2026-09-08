@@ -1,6 +1,7 @@
 // M-LIS Lucide SVG Icons Dictionary
 window.app = window.app || {};
-window.app.icons = {
+Object.assign(window.app, {
+  icons: {
     'landmark': `<svg class="lucide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" x2="21" y1="22" y2="22"></line><line x1="6" x2="6" y1="18"></line><line x1="10" x2="10" y1="18"></line><line x1="14" x2="14" y1="18"></line><line x1="18" x2="18" y1="18"></line><polygon points="12 2 20 7 4 7"></polygon><line x1="2" x2="22" y1="7" y2="7"></line></svg>`,
     'bed': `<svg class="lucide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4v16"></path><path d="M2 8h18a2 2 0 0 1 2 2v10"></path><path d="M2 17h20"></path><path d="M6 8v9"></path></svg>`,
     'building': `<svg class="lucide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path></svg>`,
@@ -31,7 +32,9 @@ window.app.icons = {
     'help-circle': `<svg class="lucide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" x2="12.01" y1="17" y2="17"></line></svg>`
   },
 
-};
-window.app.icon = function(name) {
-  return this.icons[name] || '';
-};
+  },
+
+  icon: function(name) {
+    return this.icons[name] || '';
+  }
+});
