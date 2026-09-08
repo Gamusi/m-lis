@@ -99,7 +99,7 @@ def test_build_department_table():
         {"test_name": "WBC", "result": "6.5", "unit": "10^3/uL", "flag": "Normal", "reference": "4.0 - 10.0"}
     ]
     flowable = _build_department_table(dept_name, tests)
-    assert isinstance(flowable, KeepTogether)
+    assert isinstance(flowable, Table)
 
 def test_generate_pdf_full_report():
     order_data = {

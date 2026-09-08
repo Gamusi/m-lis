@@ -224,13 +224,7 @@ def _build_department_table(dept_name: str, tests: list, compact: bool = False) 
     for t in tests:
         params = t.get("parameters")
         if params and len(params) > 0:
-            # Render Panel Subheader
             panel_name = str(t.get("test_name") or "")
-            panel_row = [Paragraph(panel_name, panel_title_style)] + [""] * (num_cols - 1)
-            data.append(panel_row)
-            panel_row_idx = len(data) - 1
-            style_cmds.append(('BACKGROUND', (0, panel_row_idx), (-1, panel_row_idx), colors.HexColor('#f8fafc')))
-            style_cmds.append(('SPAN', (0, panel_row_idx), (-1, panel_row_idx)))
 
             if "hiv" in panel_name.lower():
                 def _hiv_sort_key(p):
@@ -249,6 +243,23 @@ def _build_department_table(dept_name: str, tests: list, compact: bool = False) 
                 display_params = sorted(display_params, key=_hiv_sort_key)
             else:
                 display_params = sorted(params, key=lambda p: (p.get("sort_order") if p.get("sort_order") is not None else 999))
+
+            # Filter out parameters with empty or null results
+            display_params = [
+                p for p in display_params
+                if str(p.get("result") if p.get("result") is not None else p.get("result_value", "")).strip() not in ("", "None")
+            ]
+
+            # If no parameters have results, skip rendering this panel entirely
+            if not display_params:
+                continue
+
+            # Render Panel Subheader
+            panel_row = [Paragraph(panel_name, panel_title_style)] + [""] * (num_cols - 1)
+            data.append(panel_row)
+            panel_row_idx = len(data) - 1
+            style_cmds.append(('BACKGROUND', (0, panel_row_idx), (-1, panel_row_idx), colors.HexColor('#f8fafc')))
+            style_cmds.append(('SPAN', (0, panel_row_idx), (-1, panel_row_idx)))
 
             for p in display_params:
                 p_name = str(p.get("name") or p.get("parameter_name") or "")
@@ -370,9 +381,11 @@ def _build_department_table(dept_name: str, tests: list, compact: bool = False) 
                 comm_row = [Paragraph(f"<i><b>Clinical Note:</b> {clin_comm}</i>", comm_style)] + [""] * (num_cols - 1)
                 data.append(comm_row)
                 style_cmds.append(('SPAN', (0, comm_row_idx), (-1, comm_row_idx)))
-                style_cmds.append(('BACKGROUND', (0, comm_row_idx), (-1, comm_row_idx), colors.HexColor('#f8fafc')))
+            if len(data) - 1 >= panel_row_idx:
+                style_cmds.append(('NOSPLIT', (0, panel_row_idx), (-1, len(data) - 1)))
         else:
             # Standalone single test
+            test_row_start = len(data)
             res_text = str(t.get("result") or "")
             flag_text = str(t.get("flag") or "")
             t_name = str(t.get("test_name") or "")
@@ -462,8 +475,11 @@ def _build_department_table(dept_name: str, tests: list, compact: bool = False) 
                     style_cmds.append(('BACKGROUND', (0, comm_row_idx), (-1, comm_row_idx), colors.HexColor('#fef2f2') if is_ahd else colors.HexColor('#f8fafc')))
                     if is_ahd:
                         style_cmds.append(('BOX', (0, comm_row_idx), (-1, comm_row_idx), 0.5, colors.HexColor('#fca5a5')))
+            if len(data) - 1 >= test_row_start:
+                style_cmds.append(('NOSPLIT', (0, test_row_start), (-1, len(data) - 1)))
         
-    t_elem = Table(data, colWidths=col_widths)
+    num_repeat_rows = 2 if show_dept else 1
+    t_elem = Table(data, colWidths=col_widths, repeatRows=num_repeat_rows)
     
     header_row_idx = 1 if show_dept else 0
     if show_dept:
@@ -476,7 +492,7 @@ def _build_department_table(dept_name: str, tests: list, compact: bool = False) 
     
     t_elem.setStyle(TableStyle(style_cmds))
     
-    return KeepTogether([t_elem, Spacer(1, 4 if compact else 10)])
+    return t_elem
 
 def _build_signatures_table(order_data: dict, compact: bool = False) -> KeepTogether:
     tech = str(order_data.get("technician_name") or "").strip()
@@ -505,6 +521,15 @@ def _build_signatures_table(order_data: dict, compact: bool = False) -> KeepToge
 
 def _clean_urinalysis_name(name: str) -> str:
     name_str = str(name).strip()
+    name_lower = name_str.lower()
+    if "pus cell" in name_lower and "/ lpf" not in name_lower:
+        return "Pus Cells (/ lpf)"
+    if "red blood cell" in name_lower and "/ lpf" not in name_lower:
+        return "Red Blood Cells (/ lpf)"
+    if "epithelial" in name_lower and "/ lpf" not in name_lower:
+        return "Epithelial Cells (/ lpf)"
+    if name_lower == "casts" or name_lower == "casts (/ lpf)":
+        return "Casts (/ lpf)"
     if "(" in name_str and ")" in name_str:
         base = name_str.split("(")[0].strip()
         if base.lower() in ["proteins", "glucose", "bilirubin", "ketones", "blood", "nitrates", "nitrate", "leukocytes", "leukocyte esterase"]:
@@ -741,16 +766,22 @@ def _build_transfusion_table(tests: list, compact: bool = False) -> KeepTogether
             is_discrepancy = "discrepancy" in str(consolidated).lower()
             res_style = danger_style if is_discrepancy else bold_body_style
 
+            # Check if reverse typing was performed
+            has_reverse = any(str(v).strip() not in ("-", "", "Not Done", "None") for v in (a1, b_c))
+
             bg_data = [
                 [Paragraph("<b>ABO & Rh(D) Blood Grouping</b>", subhdr_style), "", "", "", "", ""],
-                [Paragraph("Forward Typing:", bold_body_style), Paragraph(f"Anti-A: {anti_a}", body_style), Paragraph(f"Anti-B: {anti_b}", body_style), Paragraph(f"Anti-D: {anti_d}", body_style), "", ""],
-                [Paragraph("Reverse Typing:", bold_body_style), Paragraph(f"A1-cells: {a1}", body_style), Paragraph(f"B-cells: {b_c}", body_style), "", "", ""],
-                [Paragraph("Consolidated Group:", bold_body_style), Paragraph(str(consolidated), res_style), "", "", "", ""]
+                [Paragraph("Forward Typing:", bold_body_style), Paragraph(f"Anti-A: {anti_a}", body_style), Paragraph(f"Anti-B: {anti_b}", body_style), Paragraph(f"Anti-D: {anti_d}", body_style), "", ""]
             ]
+            if has_reverse:
+                bg_data.append([Paragraph("Reverse Typing:", bold_body_style), Paragraph(f"A1-cells: {a1}", body_style), Paragraph(f"B-cells: {b_c}", body_style), "", "", ""])
+            bg_data.append([Paragraph("Consolidated Group:", bold_body_style), Paragraph(str(consolidated), res_style), "", "", "", ""])
+
+            group_row_idx = len(bg_data) - 1
             bg_tbl = Table(bg_data, colWidths=[100, 95, 95, 95, 45, 50])
             bg_tbl.setStyle(TableStyle([
                 ('SPAN', (0,0), (-1,0)),
-                ('SPAN', (1,3), (-1,3)),
+                ('SPAN', (1, group_row_idx), (-1, group_row_idx)),
                 ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#f8fafc')),
                 ('GRID', (0,0), (-1,-1), 0.3, colors.HexColor('#cbd5e1')),
                 ('TOPPADDING', (0,0), (-1,-1), 2),
@@ -857,10 +888,6 @@ def _build_transfusion_table(tests: list, compact: bool = False) -> KeepTogether
             flowables.append(cm_tbl)
             flowables.append(Spacer(1, 4))
 
-    flowables.append(Paragraph(
-        "Traceability & Safety: Donor segments preserved at 2°C - 6°C for 7 days post-transfusion per ISO 15189 / BTS standards.",
-        note_style
-    ))
     flowables.append(Spacer(1, 4 if compact else 8))
 
     return KeepTogether(flowables)
@@ -1323,8 +1350,8 @@ def generate_pdf(order_data: dict, results_data: list) -> bytes:
     title_style = ParagraphStyle(
         name='ReportTitle',
         fontName='Helvetica-Bold',
-        fontSize=13,
-        leading=16,
+        fontSize=15,
+        leading=18,
         alignment=TA_CENTER,
         textColor=colors.black
     )
@@ -1375,7 +1402,7 @@ def generate_pdf(order_data: dict, results_data: list) -> bytes:
         total_tests_count = sum(len(d.get("tests", [])) for d in other_departments)
         is_dense = total_tests_count > 5
 
-        flowables.append(Paragraph("Laboratory Report", title_style))
+        flowables.append(Paragraph("<b>LABORATORY REPORT</b>", title_style))
         flowables.append(Spacer(1, 4 if is_dense else 8))
         flowables.append(_build_metadata_table(order_data))
         flowables.append(Spacer(1, 6 if is_dense else 10))
@@ -1415,6 +1442,7 @@ def generate_pdf(order_data: dict, results_data: list) -> bytes:
                         
                 if tests_to_render:
                     flowables.append(_build_department_table(dept_name, tests_to_render, compact=is_dense))
+                    flowables.append(Spacer(1, 4 if is_dense else 8))
                 
         if urinalysis_test:
             flowables.append(_build_urinalysis_table(urinalysis_test, compact=is_dense))

@@ -67,6 +67,50 @@ def test_transfusion_pdf_report_contains_unit_details():
     assert len(pdf_bytes) > 1000
     assert pdf_bytes.startswith(b"%PDF-")
 
+def test_transfusion_pdf_report_forward_only():
+    order_data = {
+        "full_name": "WANELOBA DANIEL",
+        "client_number": "AMH-C26-0094",
+        "lab_number": "MLIS-26-09-0094",
+        "age": "28y",
+        "sex": "Male",
+        "ordered_date": "2026-09-03",
+        "requested_by": "DR. TUGUME",
+        "ward_of_origin": "MALE WARD",
+        "technician_name": "Lab Tech John",
+        "verified_by": "Dr. Sarah"
+    }
+    # Blood group with only forward typing - reverse typing omitted
+    results_data = [
+        {
+            "department": "Blood Transfusion & Immunohematology",
+            "tests": [
+                {
+                    "test_name": "Blood group (ABO & Rh typing)",
+                    "result": "A Rh(D) Positive",
+                    "parameters": [
+                        {"name": "Forward Anti-A", "result": "Agglutination (+)"},
+                        {"name": "Forward Anti-B", "result": "No Agglutination (-)"},
+                        {"name": "Forward Anti-D", "result": "Agglutination (+)"},
+                        {"name": "Consolidated Blood Group", "result": "A Rh(D) Positive"}
+                    ]
+                }
+            ]
+        }
+    ]
+
+    pdf_bytes = generate_pdf(order_data, results_data)
+    assert len(pdf_bytes) > 1000
+    assert pdf_bytes.startswith(b"%PDF-")
+
+    import pypdf
+    reader = pypdf.PdfReader(io.BytesIO(pdf_bytes))
+    full_text = "".join(page.extract_text() or "" for page in reader.pages)
+    assert "Forward Typing:" in full_text
+    assert "Anti-A: Agglutination (+)" in full_text
+    assert "Reverse Typing:" not in full_text
+    assert "A1-cells" not in full_text
+
 def test_blood_bag_label_generation():
     label_data = {
         "client_name": "WANELOBA DANIEL",
