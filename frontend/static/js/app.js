@@ -5595,28 +5595,47 @@ const app = {
   }),
 
   populateRefRangeParamDropdown: function(selectedParam) {
-    const select = document.getElementById('ref-range-modal-param');
-    if (!select) return;
-    select.innerHTML = '<option value="">-- Select Test / Parameter --</option>';
+    const datalist = document.getElementById('ref-range-param-datalist');
+    const input = document.getElementById('ref-range-modal-param');
+    if (!datalist) return;
+    datalist.innerHTML = '';
     
-    // Get unique test and parameter names from testCatalog
-    const testItems = (this.testCatalog || []).filter(t => t.is_active !== 0 && t.result_type !== 'panel');
-    const existingOptions = new Set();
+    // Strictly filter to active tests where result_type is quantitative
+    // Reference ranges only apply to numerical/quantitative analyses
+    const quantTests = (this.testCatalog || []).filter(t => t.is_active !== 0 && t.result_type === 'quantitative');
+    const seen = new Set();
     
-    testItems.forEach(t => {
-      existingOptions.add(t.name);
-      select.innerHTML += `<option value="${this.escape(t.name)}">${this.escape(t.name)} (${t.result_type || 'test'})</option>`;
+    quantTests.forEach(t => {
+      if (!seen.has(t.name.toLowerCase())) {
+        seen.add(t.name.toLowerCase());
+        const opt = document.createElement('option');
+        opt.value = t.name;
+        if (t.default_unit) {
+          opt.label = `${t.name} (${t.default_unit})`;
+        }
+        datalist.appendChild(opt);
+      }
     });
 
-    if (selectedParam && !existingOptions.has(selectedParam)) {
-      select.innerHTML += `<option value="${this.escape(selectedParam)}">${this.escape(selectedParam)}</option>`;
+    // Also include parameter names from existing reference range rules so custom parameters can be edited
+    (this.referenceRangesList || []).forEach(r => {
+      if (r.parameter_name && !seen.has(r.parameter_name.toLowerCase())) {
+        seen.add(r.parameter_name.toLowerCase());
+        const opt = document.createElement('option');
+        opt.value = r.parameter_name;
+        if (r.unit) opt.label = `${r.parameter_name} (${r.unit})`;
+        datalist.appendChild(opt);
+      }
+    });
+
+    if (input) {
+      input.value = selectedParam || '';
     }
-    select.value = selectedParam || '';
   },
 
   handleRefRangeParamSelection: function(paramName) {
     if (!paramName) return;
-    const test = (this.testCatalog || []).find(t => t.name.toLowerCase() === paramName.toLowerCase());
+    const test = (this.testCatalog || []).find(t => t.name.toLowerCase() === paramName.trim().toLowerCase());
     const unitInput = document.getElementById('ref-range-modal-unit');
     if (test && test.default_unit && unitInput && !unitInput.value) {
       unitInput.value = test.default_unit;

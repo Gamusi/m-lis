@@ -305,6 +305,20 @@ class ReferenceRangeBase(BaseModel):
     plausible_max: Optional[float] = None
     unit: Optional[str] = None
 
+    @field_validator("normal_min", "normal_max", "critical_min", "critical_max", "sanity_min", "sanity_max", "plausible_min", "plausible_max")
+    @classmethod
+    def validate_non_negative_values(cls, v: Optional[float]) -> Optional[float]:
+        if v is not None and v < 0:
+            raise ValueError("Laboratory reference and sanity values must be non-negative (>= 0)")
+        return v
+
+    @field_validator("age_min", "age_max")
+    @classmethod
+    def validate_non_negative_age(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 0:
+            raise ValueError("Age values must be non-negative (>= 0)")
+        return v
+
 class ReferenceRangeCreate(ReferenceRangeBase):
     pass
 
@@ -323,6 +337,20 @@ class ReferenceRangeUpdate(BaseModel):
     plausible_min: Optional[float] = None
     plausible_max: Optional[float] = None
     unit: Optional[str] = None
+
+    @field_validator("normal_min", "normal_max", "critical_min", "critical_max", "sanity_min", "sanity_max", "plausible_min", "plausible_max")
+    @classmethod
+    def validate_non_negative_values(cls, v: Optional[float]) -> Optional[float]:
+        if v is not None and v < 0:
+            raise ValueError("Laboratory reference and sanity values must be non-negative (>= 0)")
+        return v
+
+    @field_validator("age_min", "age_max")
+    @classmethod
+    def validate_non_negative_age(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 0:
+            raise ValueError("Age values must be non-negative (>= 0)")
+        return v
 
 class ReferenceRangeResponse(ReferenceRangeBase):
     id: int

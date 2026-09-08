@@ -109,12 +109,21 @@ def create_test(req: TestCreate, admin_user: dict = Depends(require_admin), conn
 
     tracks_stock_val = 1 if req.tracks_stock else 0
 
-    cur.execute(
-        "INSERT INTO tests (name, section_id, is_tracked, sort_order, result_type, default_unit, options, parent_rollup_id, tracks_stock, consumable_name, clinical_comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (req.name, req.section_id, effective_tracked, req.sort_order, req.result_type, req.default_unit, req.options, req.parent_rollup_id, tracks_stock_val, req.consumable_name, req.clinical_comments)
-    )
-    tid = cur.lastrowid
-    conn.commit()
+    try:
+        cur.execute(
+            "INSERT INTO tests (name, section_id, is_tracked, sort_order, result_type, default_unit, options, parent_rollup_id, tracks_stock, consumable_name, clinical_comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (req.name, req.section_id, effective_tracked, req.sort_order, req.result_type, req.default_unit, req.options, req.parent_rollup_id, tracks_stock_val, req.consumable_name, req.clinical_comments)
+        )
+        tid = cur.lastrowid
+        conn.commit()
+    except sqlite3.IntegrityError as e:
+        conn.rollback()
+        if "UNIQUE constraint failed" in str(e):
+            raise HTTPException(
+                status_code=409,
+                detail=f"A test named '{req.name}' already exists in this section. Please edit the existing test from the catalog instead of creating a duplicate."
+            )
+        raise HTTPException(status_code=400, detail=f"Database integrity error: {str(e)}")
     
     conn.execute("INSERT INTO audit_log (user_id, action, detail) VALUES (?, ?, ?)", (admin_user["id"], "create_test", f"Created test '{req.name}'"))
     conn.commit()
@@ -137,11 +146,21 @@ def update_test(test_id: int, req: TestCreate, admin_user: dict = Depends(requir
 
     tracks_stock_val = 1 if req.tracks_stock else 0
 
-    cur.execute("""
-        UPDATE tests
-        SET name = ?, section_id = ?, is_tracked = ?, sort_order = ?, result_type = ?, default_unit = ?, options = ?, parent_rollup_id = ?, tracks_stock = ?, consumable_name = ?, clinical_comments = ?
-        WHERE id = ?
-    """, (req.name, req.section_id, effective_tracked, req.sort_order, req.result_type, req.default_unit, req.options, req.parent_rollup_id, tracks_stock_val, req.consumable_name, req.clinical_comments, test_id))
+    try:
+        cur.execute("""
+            UPDATE tests
+            SET name = ?, section_id = ?, is_tracked = ?, sort_order = ?, result_type = ?, default_unit = ?, options = ?, parent_rollup_id = ?, tracks_stock = ?, consumable_name = ?, clinical_comments = ?
+            WHERE id = ?
+        """, (req.name, req.section_id, effective_tracked, req.sort_order, req.result_type, req.default_unit, req.options, req.parent_rollup_id, tracks_stock_val, req.consumable_name, req.clinical_comments, test_id))
+        conn.commit()
+    except sqlite3.IntegrityError as e:
+        conn.rollback()
+        if "UNIQUE constraint failed" in str(e):
+            raise HTTPException(
+                status_code=409,
+                detail=f"Another test named '{req.name}' already exists in this section. Please use a distinct name."
+            )
+        raise HTTPException(status_code=400, detail=f"Database integrity error: {str(e)}")
     
     conn.execute("INSERT INTO audit_log (user_id, action, detail) VALUES (?, ?, ?)", (admin_user["id"], "update_test", f"Updated test ID {test_id} ('{req.name}')"))
     conn.commit()
@@ -153,12 +172,47 @@ def update_test(test_id: int, req: TestCreate, admin_user: dict = Depends(requir
         consumable_name=req.consumable_name, clinical_comments=req.clinical_comments
     )
 
+@router.get("/tests/{test_id}/usage")
+def check_test_usage(test_id: int, conn: sqlite3.Connection = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    cur = conn.cursor()
+    cur.execute("SELECT id, name FROM tests WHERE id = ?", (test_id,))
+    t = cur.fetchone()
+    if not t:
+        raise HTTPException(status_code=404, detail="Test not found")
+    
+    # Check test_orders count
+    cur.execute("SELECT COUNT(*) as cnt FROM test_orders WHERE test_id = ?", (test_id,))
+    orders_cnt = cur.fetchone()["cnt"]
+    
+    # Check test_results count
+    cur.execute("SELECT COUNT(*) as cnt FROM test_results WHERE test_id = ?", (test_id,))
+    results_cnt = cur.fetchone()["cnt"]
+    
+    # Check reference ranges count
+    cur.execute("SELECT COUNT(*) as cnt FROM reference_ranges WHERE test_id = ? OR LOWER(parameter_name) = LOWER(?)", (test_id, t["name"]))
+    ref_cnt = cur.fetchone()["cnt"]
+    
+    return {
+        "test_id": test_id,
+        "name": t["name"],
+        "orders_count": orders_cnt,
+        "results_count": results_cnt,
+        "reference_ranges_count": ref_cnt,
+        "has_history": (orders_cnt > 0 or results_cnt > 0)
+    }
+
 @router.delete("/tests/{test_id}")
 def delete_test(test_id: int, admin_user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db)):
+    cur = conn.cursor()
+    cur.execute("SELECT id, name FROM tests WHERE id = ?", (test_id,))
+    t = cur.fetchone()
+    if not t:
+        raise HTTPException(status_code=404, detail="Test not found")
+        
     conn.execute("UPDATE tests SET is_active = 0 WHERE id = ?", (test_id,))
-    conn.execute("INSERT INTO audit_log (user_id, action, detail) VALUES (?, ?, ?)", (admin_user["id"], "delete_test", f"Soft deleted test ID {test_id}"))
+    conn.execute("INSERT INTO audit_log (user_id, action, detail) VALUES (?, ?, ?)", (admin_user["id"], "delete_test", f"Soft deleted test ID {test_id} ('{t['name']}')"))
     conn.commit()
-    return {"status": "deleted"}
+    return {"status": "deleted", "name": t["name"]}
 
 @router.get("/wards", response_model=List[WardResponse])
 def get_wards(active_only: Optional[bool] = None, conn: sqlite3.Connection = Depends(get_db), current_user: dict = Depends(get_current_user)):
@@ -303,17 +357,70 @@ def get_reference_ranges(conn: sqlite3.Connection = Depends(get_db), current_use
     return [dict(r) for r in cur.fetchall()]
 
 
+def _check_range_overlap(conn: sqlite3.Connection, param_name: str, age_min: int, age_max: int, sex: Optional[str], unit: Optional[str] = None, exclude_id: Optional[int] = None):
+    cur = conn.cursor()
+    query = """
+        SELECT id, parameter_name, age_min, age_max, sex, normal_min, normal_max, unit
+        FROM reference_ranges
+        WHERE LOWER(parameter_name) = LOWER(?)
+    """
+    params = [param_name.strip()]
+    if exclude_id:
+        query += " AND id != ?"
+        params.append(exclude_id)
+        
+    cur.execute(query, params)
+    rows = cur.fetchall()
+    
+    overlaps = []
+    rule_sex = (sex or "").strip().lower()
+    rule_unit = (unit or "").strip().lower()
+    for r in rows:
+        existing_unit = (r["unit"] or "").strip().lower()
+        # Unit-aware check: rules for different units (e.g. mmol/L vs mg/dL) represent distinct scales and are permitted.
+        # Only consider overlap if units match (or if either rule has no unit specified).
+        if rule_unit and existing_unit and (rule_unit != existing_unit):
+            continue
+
+        existing_sex = (r["sex"] or "").strip().lower()
+        # Sex condition matches if either is "any"/empty or both match exact
+        sex_match = not rule_sex or not existing_sex or (rule_sex == existing_sex)
+        if not sex_match:
+            continue
+            
+        r_age_min = r["age_min"] if r["age_min"] is not None else 0
+        r_age_max = r["age_max"] if r["age_max"] is not None else 999
+        
+        # Interval overlap: max(start1, start2) <= min(end1, end2)
+        if max(age_min, r_age_min) <= min(age_max, r_age_max):
+            sex_desc = r["sex"] if r["sex"] else "Any"
+            unit_desc = f" {r['unit']}" if r['unit'] else ""
+            overlaps.append(f"Rule #{r['id']} ({sex_desc}, {r_age_min}–{r_age_max} yrs: {r['normal_min']}–{r['normal_max']}{unit_desc})")
+            
+    return overlaps
+
 @router.post("/reference-ranges", response_model=ReferenceRangeResponse)
 def create_reference_range(req: ReferenceRangeCreate, admin_user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db)):
     param_name = req.parameter_name.strip()
     if not param_name:
         raise HTTPException(status_code=400, detail="Parameter name cannot be empty")
     
+    eff_age_min = req.age_min if req.age_min is not None else 0
+    eff_age_max = req.age_max if req.age_max is not None else 999
+    
+    overlaps = _check_range_overlap(conn, param_name, eff_age_min, eff_age_max, req.sex, unit=req.unit)
+    if overlaps:
+        overlap_details = ", ".join(overlaps)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Age/Sex overlap detected for '{param_name}' with existing interval: {overlap_details}. Please adjust age limits or sex to prevent conflicting evaluation."
+        )
+
     cur = conn.cursor()
     cur.execute("""
         INSERT INTO reference_ranges (test_id, parameter_name, age_min, age_max, sex, normal_min, normal_max, critical_min, critical_max, sanity_min, sanity_max, plausible_min, plausible_max, unit)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (req.test_id, param_name, req.age_min if req.age_min is not None else 0, req.age_max if req.age_max is not None else 999, req.sex, req.normal_min, req.normal_max, req.critical_min, req.critical_max, req.sanity_min, req.sanity_max, req.plausible_min, req.plausible_max, req.unit))
+    """, (req.test_id, param_name, eff_age_min, eff_age_max, req.sex, req.normal_min, req.normal_max, req.critical_min, req.critical_max, req.sanity_min, req.sanity_max, req.plausible_min, req.plausible_max, req.unit))
     rid = cur.lastrowid
     conn.commit()
 
@@ -322,8 +429,8 @@ def create_reference_range(req: ReferenceRangeCreate, admin_user: dict = Depends
 
     return ReferenceRangeResponse(
         id=rid, test_id=req.test_id, parameter_name=param_name,
-        age_min=req.age_min if req.age_min is not None else 0,
-        age_max=req.age_max if req.age_max is not None else 999,
+        age_min=eff_age_min,
+        age_max=eff_age_max,
         sex=req.sex, normal_min=req.normal_min, normal_max=req.normal_max,
         critical_min=req.critical_min, critical_max=req.critical_max,
         sanity_min=req.sanity_min, sanity_max=req.sanity_max,
@@ -354,6 +461,17 @@ def update_reference_range(range_id: int, req: ReferenceRangeUpdate, admin_user:
     new_plausible_min = req.plausible_min if req.plausible_min is not None else existing["plausible_min"]
     new_plausible_max = req.plausible_max if req.plausible_max is not None else existing["plausible_max"]
     new_unit = req.unit if req.unit is not None else existing["unit"]
+
+    eff_age_min = new_age_min if new_age_min is not None else 0
+    eff_age_max = new_age_max if new_age_max is not None else 999
+
+    overlaps = _check_range_overlap(conn, new_param, eff_age_min, eff_age_max, new_sex, unit=new_unit, exclude_id=range_id)
+    if overlaps:
+        overlap_details = ", ".join(overlaps)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Age/Sex overlap detected for '{new_param}' with existing interval: {overlap_details}. Please adjust age limits or sex to prevent conflicting evaluation."
+        )
 
     cur.execute("""
         UPDATE reference_ranges
