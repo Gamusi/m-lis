@@ -240,8 +240,7 @@ if (typeof Object.assign !== 'function') {
         if (rawUrl.indexOf('/api/auth/login') === -1 && rawUrl.indexOf('/api/auth/me') === -1) {
           if (window.app && window.app.currentUser) {
             console.warn('Session expired or unauthorized (401). Resetting session.');
-            window.app.showLogin();
-            window.app.showNotificationModal('Session Expired', 'Your session has expired. Please log in again.', true);
+            window.app.showLogin('Your session has expired. Please sign in again.');
           }
         }
       }
@@ -362,7 +361,7 @@ const app = {
     }
   }),
 
-  showLogin: function() {
+  showLogin: function(noticeMessage) {
     this.currentUser = null;
     this.stopInactivityTimer();
     this.cleanseDOM();
@@ -370,6 +369,13 @@ const app = {
     document.getElementById('user-nav').innerHTML = '';
     this.openModal('login-modal');
     this.showLoginForm();
+    if (noticeMessage) {
+      const errDiv = document.getElementById('login-error');
+      if (errDiv) {
+        errDiv.textContent = noticeMessage;
+        errDiv.style.display = 'block';
+      }
+    }
   },
 
   handleLogin: __async(function*(event) {
@@ -410,10 +416,10 @@ const app = {
     }
   }),
 
-  handleLogout: __async(function*() {
+  handleLogout: __async(function*(noticeMessage) {
     this.stopInactivityTimer();
     yield fetch('/api/auth/logout', { method: 'POST' });
-    this.showLogin();
+    this.showLogin(noticeMessage);
   }),
 
   showResetPasswordModal: function() {
@@ -577,8 +583,7 @@ const app = {
     if (this.currentUser) {
       this.inactivityTimer = setTimeout(() => {
         console.log("Inactivity timeout reached. Logging out...");
-        this.showNotificationModal("Notice", "Logged out automatically due to inactivity.", true);
-        this.handleLogout();
+        this.handleLogout("Logged out automatically due to inactivity.");
       }, this.inactivityTimeout);
     }
   },
@@ -622,10 +627,10 @@ const app = {
     // Reset all forms in modal/app
     document.querySelectorAll('form').forEach(form => form.reset());
 
-    // Hide reset password modal and close all modals
-    const resetModal = document.getElementById('reset-password-modal');
-    if (resetModal) this.closeModal(resetModal);
-    (this._modalStack || []).forEach(function(m) { if (m) m.style.display = 'none'; });
+    // Comprehensive modal & overlay dismissal: hide every modal overlay on screen
+    document.querySelectorAll('.modal-overlay').forEach(function(modalEl) {
+      modalEl.style.display = 'none';
+    });
     this._modalStack = [];
 
     // Reset dynamic view container content to default placeholder
@@ -4096,11 +4101,17 @@ const app = {
       if (statusSpan) statusSpan.textContent = '';
     }
     
-    // Ensure testCatalog is loaded
+    // Ensure testCatalog and reference ranges are loaded
     if (!this.testCatalog || this.testCatalog.length === 0) {
       try {
         const res = yield fetch('/api/config/tests');
         if (res.ok) this.testCatalog = yield res.json();
+      } catch(e) {}
+    }
+    if (!this.referenceRangesList || this.referenceRangesList.length === 0) {
+      try {
+        const refRes = yield fetch('/api/config/reference-ranges');
+        if (refRes.ok) this.referenceRangesList = yield refRes.json();
       } catch(e) {}
     }
     
@@ -4573,9 +4584,10 @@ const app = {
               <div class="form-group" style="margin-bottom: 16px;">
                 <label>Result Value:</label>
                 <div style="display: flex; gap: 8px;">
-                    <input type="number" step="any" id="result-entry-value" value="${isEdit ? this.escape(existingVal) : ''}" placeholder="${this.escape(placeholderText)}" style="flex: 1; padding: 8px;">
+                    <input type="number" step="any" id="result-entry-value" value="${isEdit ? this.escape(existingVal) : ''}" placeholder="${this.escape(placeholderText)}" style="flex: 1; padding: 8px;" oninput="app.evaluateResultPlausibilityLive(this, '${this.escape(testName)}')">
                     ${unitHtml}
                 </div>
+                <div id="result-entry-plausibility-msg" style="display: none; font-size: 0.82rem; margin-top: 6px; padding: 6px 10px; border-radius: 4px;"></div>
                 ${clinicalHint}
               </div>
             `;
@@ -4623,19 +4635,22 @@ const app = {
                 let optsHtml = pOpts.map(o => `<option value="${this.escape(o)}">${this.escape(o)}</option>`).join('');
                 valInputHtml = `<select class="modal-param-val" style="width: 100%; padding: 7px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.88rem;">${optsHtml}</select>`;
               } else {
-                valInputHtml = `<input type="text" class="modal-param-val" placeholder="Result" style="width: 100%; padding: 7px 10px; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; font-size: 0.88rem;">`;
+                valInputHtml = `<input type="text" class="modal-param-val" placeholder="Result" style="width: 100%; padding: 7px 10px; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; font-size: 0.88rem;" oninput="app.evaluateResultPlausibilityLive(this, '${this.escape(p.parameter_name)}')">`;
               }
 
               html += `
-                <div style="display: grid; grid-template-columns: 2fr 1.3fr; gap: 14px; align-items: center; padding: 8px 4px; border-bottom: 1px solid #edf2f7;" class="modal-param-row" data-param-id="${p.id}" data-param-name="${this.escape(p.parameter_name)}">
-                  <div style="display: flex; flex-direction: column; gap: 2px;">
-                    <strong style="font-size: 0.88rem; color: var(--text-dark);">${this.escape(p.parameter_name)}</strong>
-                    ${p.ref_range ? `<span style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.2;">Ref: ${this.escape(p.ref_range)}</span>` : ''}
+                <div style="padding: 8px 4px; border-bottom: 1px solid #edf2f7;" class="modal-param-row" data-param-id="${p.id}" data-param-name="${this.escape(p.parameter_name)}">
+                  <div style="display: grid; grid-template-columns: 2fr 1.3fr; gap: 14px; align-items: center;">
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                      <strong style="font-size: 0.88rem; color: var(--text-dark);">${this.escape(p.parameter_name)}</strong>
+                      ${p.ref_range ? `<span style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.2;">Ref: ${this.escape(p.ref_range)}</span>` : ''}
+                    </div>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                      <div style="flex: 1;">${valInputHtml}</div>
+                      ${unitDisplay}
+                    </div>
                   </div>
-                  <div style="display: flex; gap: 6px; align-items: center;">
-                    <div style="flex: 1;">${valInputHtml}</div>
-                    ${unitDisplay}
-                  </div>
+                  <div class="modal-param-plausibility-msg" style="display: none; font-size: 0.8rem; margin-top: 4px; padding: 4px 8px; border-radius: 4px;"></div>
                 </div>
               `;
             });
@@ -4799,6 +4814,26 @@ const app = {
            app.showNotificationModal("Error", "Result cannot be empty.", true);
            return;
        }
+
+       // Pre-submission physiological sanity check
+       if (paramResults && paramResults.length > 0) {
+         for (let i = 0; i < paramResults.length; i++) {
+           const pr = paramResults[i];
+           const pRow = paramsContainer.querySelector(`.modal-param-row[data-param-id="${pr.parameter_id}"]`);
+           const pName = pRow ? (pRow.getAttribute('data-param-name') || '') : '';
+           const check = app.checkPlausibilityLimits(pName, pr.result_value);
+           if (check && check.level === 'sanity') {
+             app.showNotificationModal("Physiological Sanity Breach", `Parameter '${pName}': ${check.message}`, true);
+             return;
+           }
+         }
+       } else if (finalVal) {
+         const check = app.checkPlausibilityLimits(testName, finalVal);
+         if (check && check.level === 'sanity') {
+           app.showNotificationModal("Physiological Sanity Breach", check.message, true);
+           return;
+         }
+       }
        
        try {
          if (paramResults && paramResults.length > 0) {
@@ -4874,8 +4909,123 @@ const app = {
     });
   }),
 
+  findMatchingRefRangeRule: function(paramName) {
+    if (!paramName || !this.referenceRangesList) return null;
+    const nameLower = paramName.trim().toLowerCase();
+    const rules = this.referenceRangesList.filter(function(r) {
+      return (r.parameter_name || '').trim().toLowerCase() === nameLower;
+    });
+    if (rules.length === 0) return null;
 
+    let clientAge = null;
+    let clientSex = null;
+    if (this.currentClientData) {
+      clientSex = this.currentClientData.sex || null;
+      if (this.currentClientData.age_years !== null && this.currentClientData.age_years !== undefined) {
+        clientAge = parseFloat(this.currentClientData.age_years);
+      }
+    }
 
+    // 1. Exact demographic match (age & sex)
+    for (let i = 0; i < rules.length; i++) {
+      const r = rules[i];
+      const aMin = r.age_min !== null ? r.age_min : 0;
+      const aMax = r.age_max !== null ? r.age_max : 999;
+      if (clientAge !== null && (clientAge < aMin || clientAge > aMax)) continue;
+      if (r.sex && clientSex && r.sex.toLowerCase() !== clientSex.toLowerCase()) continue;
+      return r;
+    }
+
+    // 2. Relax sex
+    for (let i = 0; i < rules.length; i++) {
+      const r = rules[i];
+      const aMin = r.age_min !== null ? r.age_min : 0;
+      const aMax = r.age_max !== null ? r.age_max : 999;
+      if (clientAge !== null && (clientAge < aMin || clientAge > aMax)) continue;
+      return r;
+    }
+
+    return rules[0];
+  },
+
+  checkPlausibilityLimits: function(paramName, rawVal) {
+    if (rawVal === null || rawVal === undefined || String(rawVal).trim() === '') {
+      return null;
+    }
+    const valNum = parseFloat(String(rawVal).trim().split(' ')[0]);
+    if (isNaN(valNum)) return null;
+
+    const rule = this.findMatchingRefRangeRule(paramName);
+    if (!rule) return null;
+
+    const sMin = rule.sanity_min;
+    const sMax = rule.sanity_max;
+    const pMin = rule.plausible_min;
+    const pMax = rule.plausible_max;
+    const unitStr = rule.unit ? ` ${rule.unit}` : '';
+
+    if ((sMin !== null && valNum < sMin) || (sMax !== null && valNum > sMax)) {
+      const bStr = (sMin !== null && sMax !== null) ? `${sMin}–${sMax}` : (sMin !== null ? `>= ${sMin}` : `<= ${sMax}`);
+      return {
+        level: 'sanity',
+        message: `Improbable physiological value (${valNum}${unitStr}). Bounds: ${bStr}. Verify dilution, sample integrity, or instrument calibration.`
+      };
+    }
+
+    if ((pMin !== null && valNum < pMin) || (pMax !== null && valNum > pMax)) {
+      const bStr = (pMin !== null && pMax !== null) ? `${pMin}–${pMax}` : (pMin !== null ? `>= ${pMin}` : `<= ${pMax}`);
+      return {
+        level: 'plausible',
+        message: `Critical plausibility alert (${valNum}${unitStr}). Plausible: ${bStr}. Confirm before saving.`
+      };
+    }
+
+    return null;
+  },
+
+  evaluateResultPlausibilityLive: function(inputEl, paramName) {
+    if (!inputEl) return;
+    const val = inputEl.value;
+    const check = this.checkPlausibilityLimits(paramName, val);
+
+    // Locate feedback container (single modal container or modal-param-row container)
+    let msgEl = null;
+    const parentRow = inputEl.closest('.modal-param-row');
+    if (parentRow) {
+      msgEl = parentRow.querySelector('.modal-param-plausibility-msg');
+    } else {
+      msgEl = document.getElementById('result-entry-plausibility-msg');
+    }
+
+    if (!check) {
+      inputEl.style.borderColor = '';
+      inputEl.style.backgroundColor = '';
+      if (msgEl) {
+        msgEl.style.display = 'none';
+        msgEl.textContent = '';
+      }
+    } else if (check.level === 'sanity') {
+      inputEl.style.borderColor = '#B91C1C';
+      inputEl.style.backgroundColor = '#FEF2F2';
+      if (msgEl) {
+        msgEl.style.display = 'block';
+        msgEl.style.color = '#991B1B';
+        msgEl.style.backgroundColor = '#FEE2E2';
+        msgEl.style.border = '1px solid #F87171';
+        msgEl.textContent = check.message;
+      }
+    } else if (check.level === 'plausible') {
+      inputEl.style.borderColor = '#D97706';
+      inputEl.style.backgroundColor = '#FFFBEB';
+      if (msgEl) {
+        msgEl.style.display = 'block';
+        msgEl.style.color = '#92400E';
+        msgEl.style.backgroundColor = '#FEF3C7';
+        msgEl.style.border = '1px solid #FCD34D';
+        msgEl.textContent = check.message;
+      }
+    }
+  },
 
   submitTestResult: __async(function*(pid) {
     const tid = parseInt(document.getElementById('order-test-select').value, 10);
@@ -5047,7 +5197,7 @@ const app = {
     const isSuperAdmin = this.currentUser && this.currentUser.role === 'superadmin';
 
     container.innerHTML = `
-      <details class="card" style="margin-bottom: 16px;" open>
+      <details class="card" style="margin-bottom: 16px;">
         <summary class="card-header" style="cursor: pointer; list-style: none;">
           <span class="card-title">${this.icon('landmark')} Facility Identity & Branding Configuration</span>
         </summary>
@@ -5088,7 +5238,15 @@ const app = {
           <span class="card-title">${this.icon('settings')} Test Catalog & Section Configuration</span>
         </summary>
         <div style="padding: 16px;">
-          <button class="btn btn-primary" onclick="app.openTestConfigModal()" style="margin-bottom: 12px;">${this.icon('plus')} Add New Test</button>
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+            <button class="btn btn-primary" onclick="app.openTestConfigModal()">${this.icon('plus')} Add New Test</button>
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <select id="test-catalog-section-filter" onchange="app.filterTestCatalogTable()" style="padding: 7px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.85rem;">
+                <option value="all">All Sections</option>
+              </select>
+              <input type="text" id="test-catalog-search" placeholder="Search test or parameter..." oninput="app.filterTestCatalogTable()" style="padding: 7px 12px; border: 1px solid var(--border-color); border-radius: 4px; min-width: 240px; font-size: 0.85rem;">
+            </div>
+          </div>
           <div id="config-table-container">
             <p style="color: var(--text-muted);">Loading configuration...</p>
           </div>
@@ -5100,7 +5258,10 @@ const app = {
           <span class="card-title">${this.icon('sliders')} Reference Intervals & Clinical Flags Configuration</span>
         </summary>
         <div style="padding: 16px;">
-          <button class="btn btn-primary" onclick="app.showAddReferenceRangeModal()" style="margin-bottom: 12px;">${this.icon('plus')} Add Reference Range Rule</button>
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+            <button class="btn btn-primary" onclick="app.showAddReferenceRangeModal()">${this.icon('plus')} Add Reference Range Rule</button>
+            <input type="text" id="ref-range-search" placeholder="Search reference intervals by test name..." oninput="app.filterReferenceRangesTable()" style="padding: 7px 12px; border: 1px solid var(--border-color); border-radius: 4px; min-width: 260px; font-size: 0.85rem;">
+          </div>
           <div id="reference-ranges-table-container">
             <p style="color: var(--text-muted);">Loading reference intervals...</p>
           </div>
@@ -5433,7 +5594,52 @@ const app = {
     }
   }),
 
+  populateRefRangeParamDropdown: function(selectedParam) {
+    const select = document.getElementById('ref-range-modal-param');
+    if (!select) return;
+    select.innerHTML = '<option value="">-- Select Test / Parameter --</option>';
+    
+    // Get unique test and parameter names from testCatalog
+    const testItems = (this.testCatalog || []).filter(t => t.is_active !== 0 && t.result_type !== 'panel');
+    const existingOptions = new Set();
+    
+    testItems.forEach(t => {
+      existingOptions.add(t.name);
+      select.innerHTML += `<option value="${this.escape(t.name)}">${this.escape(t.name)} (${t.result_type || 'test'})</option>`;
+    });
+
+    if (selectedParam && !existingOptions.has(selectedParam)) {
+      select.innerHTML += `<option value="${this.escape(selectedParam)}">${this.escape(selectedParam)}</option>`;
+    }
+    select.value = selectedParam || '';
+  },
+
+  handleRefRangeParamSelection: function(paramName) {
+    if (!paramName) return;
+    const test = (this.testCatalog || []).find(t => t.name.toLowerCase() === paramName.toLowerCase());
+    const unitInput = document.getElementById('ref-range-modal-unit');
+    if (test && test.default_unit && unitInput && !unitInput.value) {
+      unitInput.value = test.default_unit;
+    }
+    
+    // Pre-populate plausible / sanity defaults from existing reference range rules if present
+    const existingRules = (this.referenceRangesList || []).filter(r => r.parameter_name.toLowerCase() === paramName.toLowerCase());
+    if (existingRules.length > 0) {
+      const template = existingRules[0];
+      if (unitInput && !unitInput.value && template.unit) unitInput.value = template.unit;
+      const sMin = document.getElementById('ref-range-modal-sanity-min');
+      const sMax = document.getElementById('ref-range-modal-sanity-max');
+      const pMin = document.getElementById('ref-range-modal-plausible-min');
+      const pMax = document.getElementById('ref-range-modal-plausible-max');
+      if (sMin && !sMin.value && template.sanity_min !== null) sMin.value = template.sanity_min;
+      if (sMax && !sMax.value && template.sanity_max !== null) sMax.value = template.sanity_max;
+      if (pMin && !pMin.value && template.plausible_min !== null) pMin.value = template.plausible_min;
+      if (pMax && !pMax.value && template.plausible_max !== null) pMax.value = template.plausible_max;
+    }
+  },
+
   showAddReferenceRangeModal: function() {
+    this.populateRefRangeParamDropdown('');
     document.getElementById('reference-range-modal-title').textContent = 'Add Reference Range Rule';
     document.getElementById('ref-range-modal-id').value = '';
     document.getElementById('ref-range-modal-param').value = '';
@@ -5455,6 +5661,7 @@ const app = {
   showEditReferenceRangeModal: function(id) {
     const r = (this.referenceRangesList || []).find(item => item.id === id);
     if (!r) return;
+    this.populateRefRangeParamDropdown(r.parameter_name || '');
     document.getElementById('reference-range-modal-title').textContent = 'Edit Reference Range Rule';
     document.getElementById('ref-range-modal-id').value = r.id;
     document.getElementById('ref-range-modal-param').value = r.parameter_name || '';
@@ -5473,6 +5680,62 @@ const app = {
     this.openModal('reference-range-modal');
   },
 
+  filterReferenceRangesTable: function() {
+    const q = (document.getElementById('ref-range-search')?.value || '').toLowerCase().trim();
+    const rows = document.querySelectorAll('#reference-ranges-table-container tbody tr');
+    rows.forEach(r => {
+      const text = r.textContent.toLowerCase();
+      r.style.display = text.includes(q) ? '' : 'none';
+    });
+  },
+
+  filterTestCatalogTable: function() {
+    const q = (document.getElementById('test-catalog-search') ? document.getElementById('test-catalog-search').value : '').toLowerCase().trim();
+    const secFilterEl = document.getElementById('test-catalog-section-filter');
+    const selectedSec = secFilterEl ? secFilterEl.value : 'all';
+    const container = document.getElementById('config-table-container');
+    if (!container) return;
+    const rows = container.querySelectorAll('tbody tr');
+    let currentSecMatches = false;
+    let secHeader = null;
+    let anyChildMatchedInSec = false;
+
+    rows.forEach(tr => {
+      if (tr.hasAttribute('data-section-header')) {
+        secHeader = tr;
+        const secName = tr.getAttribute('data-section-name') || tr.textContent.toLowerCase();
+        const secId = tr.getAttribute('data-section-id') || '';
+        const secMatchesFilter = (selectedSec === 'all' || selectedSec === secId || selectedSec === secName);
+        const secMatchesSearch = (q === '' || secName.includes(q));
+        currentSecMatches = secMatchesFilter && secMatchesSearch;
+        anyChildMatchedInSec = false;
+        tr.style.display = currentSecMatches ? '' : 'none';
+      } else {
+        const rowSecId = tr.getAttribute('data-section-id') || '';
+        const rowSecName = tr.getAttribute('data-section-name') || '';
+        const secMatchesFilter = (selectedSec === 'all' || selectedSec === rowSecId || selectedSec === rowSecName);
+        const text = tr.textContent.toLowerCase();
+        const matchesSearch = (q === '' || text.includes(q));
+        const visible = secMatchesFilter && matchesSearch;
+        
+        // If parent panel is collapsed, keep child row hidden unless searching
+        const isChild = tr.hasAttribute('data-parent-id');
+        if (isChild && q === '' && tr.style.display === 'none') {
+          // Keep collapsed state
+        } else {
+          tr.style.display = visible ? '' : 'none';
+        }
+        
+        if (visible) {
+          anyChildMatchedInSec = true;
+          if (secHeader && secMatchesFilter) {
+            secHeader.style.display = '';
+          }
+        }
+      }
+    });
+  },
+
   submitReferenceRangeModal: __async(function*(event) {
     event.preventDefault();
     const id = document.getElementById('ref-range-modal-id').value;
@@ -5489,6 +5752,15 @@ const app = {
     const plausibleMin = document.getElementById('ref-range-modal-plausible-min').value;
     const plausibleMax = document.getElementById('ref-range-modal-plausible-max').value;
     const unit = document.getElementById('ref-range-modal-unit').value.trim() || null;
+
+    // Check non-negative constraints
+    const numericFields = [normMin, normMax, critMin, critMax, sanityMin, sanityMax, plausibleMin, plausibleMax];
+    for (const val of numericFields) {
+      if (val !== '' && parseFloat(val) < 0) {
+        this.showNotificationModal("Validation Error", "Reference intervals and sanity limits must be non-negative (>= 0).", true);
+        return;
+      }
+    }
 
     const payload = {
       parameter_name: param,
@@ -5577,6 +5849,18 @@ const app = {
         const tests = yield res.json();
         this.testCatalog = tests;
 
+        // Populate section filter dropdown
+        const secFilterSelect = document.getElementById('test-catalog-section-filter');
+        if (secFilterSelect) {
+          const currentVal = secFilterSelect.value || 'all';
+          let secOptions = '<option value="all">All Sections</option>';
+          (this.sections || []).forEach(s => {
+            secOptions += `<option value="${s.id}">${this.escape(s.name)}</option>`;
+          });
+          secFilterSelect.innerHTML = secOptions;
+          secFilterSelect.value = currentVal;
+        }
+
         // Build section name lookup
         const sectionMap = {};
         (this.sections || []).forEach(s => { sectionMap[s.id] = s.name; });
@@ -5599,7 +5883,8 @@ const app = {
           <table class="data-table" style="table-layout: auto; width: 100%;">
             <thead>
               <tr>
-                <th>Test Name</th>
+                <th>Test / Parameter Name</th>
+                <th style="white-space: nowrap;">Type & Unit</th>
                 <th style="white-space: nowrap;">Surveillance Tracking</th>
                 <th style="white-space: nowrap;">Actions</th>
               </tr>
@@ -5613,11 +5898,13 @@ const app = {
 
         orderedSections.forEach(secName => {
           const secTests = bySection[secName];
+          const secObj = (this.sections || []).find(s => s.name === secName);
+          const secId = secObj ? secObj.id : '';
 
           // Section header row
           tableHtml += `
-            <tr style="background-color: var(--primary-color); color: white;">
-              <td colspan="3" style="font-weight: 700; padding: 6px 12px; font-size: 0.82rem; letter-spacing: 0.06em;">
+            <tr data-section-header="true" data-section-id="${secId}" data-section-name="${this.escape(secName.toLowerCase())}" style="background-color: var(--primary-color); color: white;">
+              <td colspan="4" style="font-weight: 700; padding: 6px 12px; font-size: 0.82rem; letter-spacing: 0.06em;">
                 ${this.escape(secName.toUpperCase())}
               </td>
             </tr>
@@ -5636,7 +5923,7 @@ const app = {
             const children = childrenMap[parent.id] || [];
             const count = children.length;
             tableHtml += `
-              <tr style="background-color: #EEF2FF; font-weight: 600;">
+              <tr data-section-id="${secId}" data-section-name="${this.escape(secName.toLowerCase())}" style="background-color: #EEF2FF; font-weight: 600;">
                 <td style="padding-left: 12px;">
                   <button
                     id="toggle-btn-${parent.id}"
@@ -5645,15 +5932,20 @@ const app = {
                     onclick="app.togglePanelGroup(${parent.id})"
                   >+</button>${this.escape(parent.name)}<span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 400; margin-left: 10px;">${count} parameter${count !== 1 ? 's' : ''}</span>
                 </td>
+                <td>Panel</td>
                 <td>${parent.is_tracked ? 'Tracked (Positives / Findings)' : 'Standard (Done Only)'}</td>
                 <td style="color: var(--text-muted); font-size: 0.8rem;">System panel</td>
               </tr>
             `;
             // Child rows hidden by default
             children.forEach(child => {
+              const typeLabel = child.result_type === 'quantitative' 
+                ? `Quantitative (${child.default_unit || 'No unit'})` 
+                : (child.result_type === 'semi_quantitative' ? 'Semi-Quantitative' : 'Qualitative');
               tableHtml += `
-                <tr data-parent-id="${parent.id}" style="display: none; background-color: #FAFAFA;">
+                <tr data-section-id="${secId}" data-section-name="${this.escape(secName.toLowerCase())}" data-parent-id="${parent.id}" style="display: none; background-color: #FAFAFA;">
                   <td style="padding-left: 40px; font-size: 0.9rem;">${this.escape(child.name)}</td>
+                  <td>${this.escape(typeLabel)}</td>
                   <td style="font-size: 0.85rem;">${child.is_tracked ? 'Tracked (Positives / Findings)' : 'Standard (Done Only)'}</td>
                   <td>
                     <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.8rem;" onclick="app.openTestConfigModal(${child.id})">Edit</button>
@@ -5666,9 +5958,13 @@ const app = {
 
           // Standalone tests (flat rows with Edit + Delete)
           standalones.forEach(t => {
+            const typeLabel = t.result_type === 'quantitative' 
+              ? `Quantitative (${t.default_unit || 'No unit'})` 
+              : (t.result_type === 'semi_quantitative' ? 'Semi-Quantitative' : 'Qualitative');
             tableHtml += `
-              <tr>
+              <tr data-section-id="${secId}" data-section-name="${this.escape(secName.toLowerCase())}">
                 <td style="padding-left: 12px;"><strong>${this.escape(t.name)}</strong></td>
+                <td>${this.escape(typeLabel)}</td>
                 <td>${t.is_tracked ? 'Tracked (Positives / Findings)' : 'Standard (Done Only)'}</td>
                 <td>
                   <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.8rem;" onclick="app.openTestConfigModal(${t.id})">Edit</button>
@@ -6153,11 +6449,23 @@ const app = {
         this.showNotificationModal("Success", `Test ${id ? 'updated' : 'added'} successfully.`);
         yield this.loadConfigData();
       } else {
-        const err = yield res.json();
-        this.showNotificationModal("Error", err.detail || 'Failed to save test.', true);
+        let errMessage = 'Failed to save test.';
+        try {
+          const err = yield res.json();
+          if (err && err.detail) {
+            errMessage = typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail);
+          }
+        } catch(parseErr) {
+          errMessage = `Server returned status ${res.status} (${res.statusText}).`;
+        }
+        this.showNotificationModal("Unable to Save Test", errMessage, true);
       }
     } catch (e) {
-      this.showNotificationModal("Error", 'Connection error.', true);
+      this.showNotificationModal(
+        "Connection Error",
+        "Could not reach backend service. Verify server is running on port 8756 and retry.",
+        true
+      );
     }
   }),
 
@@ -6173,19 +6481,36 @@ const app = {
       return;
     }
 
-    app.confirmAction("Confirm Deletion", "Are you sure you want to deactivate this test from the catalog?", __async(function*() {
-      try {
-        const res = yield fetch(`/api/config/tests/${testId}`, { method: 'DELETE' });
-        if (res.ok) {
-          app.loadConfigData();
-        } else {
-          app.showNotificationModal("Error", 'Failed to delete test.', true);
+    try {
+      const usageRes = yield fetch(`/api/config/tests/${testId}/usage`);
+      let confirmMsg = "Are you sure you want to deactivate this test from the catalog?";
+      if (usageRes.ok) {
+        const usage = yield usageRes.json();
+        if (usage.has_history) {
+          confirmMsg = `This test has historical clinical data (${usage.orders_count} order(s), ${usage.results_count} result(s)). Deactivating will hide it from future orders while safely preserving historical records. Proceed?`;
+        } else if (usage.reference_ranges_count > 0) {
+          confirmMsg = `This test has ${usage.reference_ranges_count} reference range rule(s) configured. Deactivating will remove it from the active menu. Proceed?`;
         }
-      } catch (e) {
-        app.showNotificationModal("Error", 'Connection error.', true);
       }
-    }));
-   }),
+
+      app.confirmAction("Confirm Deactivation", confirmMsg, __async(function*() {
+        try {
+          const res = yield fetch(`/api/config/tests/${testId}`, { method: 'DELETE' });
+          if (res.ok) {
+            app.loadConfigData();
+            app.showNotificationModal("Success", "Test successfully deactivated.", false);
+          } else {
+            const err = yield res.json();
+            app.showNotificationModal("Error", (err && err.detail) ? err.detail : 'Failed to delete test.', true);
+          }
+        } catch (e) {
+          app.showNotificationModal("Error", 'Connection error.', true);
+        }
+      }));
+    } catch (e) {
+      app.showNotificationModal("Error", 'Connection error retrieving test usage.', true);
+    }
+  }),
 
 
   renderAuditLog: __async(function*(container) {
