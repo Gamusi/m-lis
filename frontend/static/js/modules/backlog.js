@@ -22,14 +22,18 @@
               <input type="date" id="backlog-date" value="${curDate}" onchange="app.onBacklogDateChange(this.value)" style="padding: 6px 10px; font-size: 0.9rem;">
               <div class="btn-group" style="display: flex; gap: 4px;">
                 <button class="btn btn-secondary btn-sm" onclick="app.shiftBacklogDate(0)">Today</button>
-                <button class="btn btn-secondary btn-sm" onclick="app.shiftBacklogDate(-1)">Yesterday</button>
+                <button class="btn btn-secondary btn-sm" onclick="app.shiftBacklogDate(-1, true)">Yesterday</button>
                 <button class="btn btn-secondary btn-sm" onclick="app.shiftBacklogDate(-1)">${this.icon('chevron-left')} Prev</button>
                 <button class="btn btn-secondary btn-sm" onclick="app.shiftBacklogDate(1)">Next ${this.icon('chevron-right')}</button>
               </div>
             </div>
-            <div style="display: flex; gap: 4px; align-items: center;">
+            <div style="display: flex; gap: 6px; align-items: center;">
               <button class="btn btn-secondary btn-sm" onclick="app.openBacklogCoverageModal()" title="View Coverage Calendar">
                 ${this.icon('calendar')} Coverage Status
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="app.loadBacklogData(document.getElementById('backlog-date').value)" title="Discard uncommitted changes">Reset Changes</button>
+              <button type="button" id="btn-save-backlog" class="btn btn-primary btn-sm" onclick="app.saveBacklogData()" style="padding: 6px 14px; font-weight: 600;" title="Save backlog entries (Ctrl+S)">
+                ${this.icon('save')} Save Backlog Entries
               </button>
             </div>
           </div>
@@ -59,19 +63,6 @@
         <div id="backlog-sections-container">
           <p style="color: var(--text-muted);">Loading backlog register...</p>
         </div>
-
-        <!-- Sticky Bottom Action Bar -->
-        <div style="position: sticky; bottom: 12px; background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-top: 20px; z-index: 100;">
-          <div style="font-size: 0.85rem; color: var(--text-muted);">
-            Keyboard: Use <kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&rarr;</kbd> <kbd>&darr;</kbd> to navigate cells, <kbd>Ctrl</kbd> + <kbd>S</kbd> to save.
-          </div>
-          <div style="display: flex; gap: 10px;">
-            <button type="button" class="btn btn-secondary" onclick="app.loadBacklogData(document.getElementById('backlog-date').value)">Reset Changes</button>
-            <button type="button" id="btn-save-backlog" class="btn btn-primary" onclick="app.saveBacklogData()" style="padding: 8px 24px; font-weight: 600;">
-              ${this.icon('save')} Save Backlog Entries
-            </button>
-          </div>
-        </div>
       </div>
     `;
 
@@ -90,14 +81,16 @@
     this.loadBacklogData(dateVal);
   },
 
-  shiftBacklogDate: function(offset) {
+  shiftBacklogDate: function(offset, isYesterday) {
     const inp = document.getElementById('backlog-date');
     let target = new Date();
-    if (offset !== 0 && inp && inp.value) {
+    if (isYesterday) {
+      target.setDate(target.getDate() - 1);
+    } else if (offset !== 0 && inp && inp.value) {
       target = new Date(inp.value);
       target.setDate(target.getDate() + offset);
-    } else if (offset === -1 && inp && !inp.value) {
-      target.setDate(target.getDate() - 1);
+    } else if (offset === 0) {
+      target = new Date();
     }
     const dStr = target.toISOString().split('T')[0];
     if (inp) inp.value = dStr;
@@ -306,7 +299,7 @@
     const currentRow = currentInput ? currentInput.closest('.backlog-row') : null;
 
     if (key === 'Enter' || key === 'ArrowDown') {
-      if (key === 'Enter') event.preventDefault();
+      event.preventDefault();
       const allInputs = Array.from(document.querySelectorAll(`.backlog-input-${fieldName}`)).filter(el => el.offsetParent !== null);
       const curIdx = allInputs.indexOf(currentInput);
       if (curIdx >= 0 && curIdx < allInputs.length - 1) {
@@ -314,6 +307,7 @@
         allInputs[curIdx + 1].select();
       }
     } else if (key === 'ArrowUp') {
+      event.preventDefault();
       const allInputs = Array.from(document.querySelectorAll(`.backlog-input-${fieldName}`)).filter(el => el.offsetParent !== null);
       const curIdx = allInputs.indexOf(currentInput);
       if (curIdx > 0) {

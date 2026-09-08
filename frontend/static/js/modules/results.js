@@ -674,14 +674,14 @@
           } else {
             form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
           }
-        } else if (e.key === 'ArrowDown' && input.tagName !== 'SELECT') {
+        } else if (e.key === 'ArrowDown' && input.tagName !== 'SELECT' && input.tagName !== 'TEXTAREA') {
           const nextInput = inputs[index + 1];
           if (nextInput) {
             e.preventDefault();
             nextInput.focus();
             if (typeof nextInput.select === 'function') nextInput.select();
           }
-        } else if (e.key === 'ArrowUp' && input.tagName !== 'SELECT') {
+        } else if (e.key === 'ArrowUp' && input.tagName !== 'SELECT' && input.tagName !== 'TEXTAREA') {
           const prevInput = inputs[index - 1];
           if (prevInput) {
             e.preventDefault();

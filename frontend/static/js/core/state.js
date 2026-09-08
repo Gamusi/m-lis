@@ -399,6 +399,18 @@ Object.assign(window.app, {
       this.showResetPasswordModal();
       return;
     }
+
+    const isPrivileged = this.currentUser && (this.currentUser.role === 'admin' || this.currentUser.role === 'superadmin');
+    const isSuper = this.currentUser && this.currentUser.role === 'superadmin';
+    if ((viewName === 'reports' || viewName === 'config') && !isPrivileged) {
+      this.showNotificationModal("Access Denied", "This tab requires Administrator privileges.", true);
+      return;
+    }
+    if (viewName === 'audit' && !isSuper) {
+      this.showNotificationModal("Access Denied", "This tab requires Super Admin privileges.", true);
+      return;
+    }
+
     this.currentView = viewName;
     document.querySelectorAll('.nav-tab').forEach(tab => {
       tab.classList.remove('active');

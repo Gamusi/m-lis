@@ -216,7 +216,7 @@
           return;
         }
 
-        // Daily Log date shifting
+        // Daily Log & Backlog date shifting
         if (this.currentView === 'daily-log') {
           if (key === '[' || (isAlt && key === 'ArrowLeft')) {
             e.preventDefault();
@@ -231,6 +231,22 @@
           if (key === 't' || key === 'T') {
             e.preventDefault();
             this.shiftLogDate(0);
+            return;
+          }
+        } else if (this.currentView === 'backlog') {
+          if (key === '[' || (isAlt && key === 'ArrowLeft')) {
+            e.preventDefault();
+            this.shiftBacklogDate(-1);
+            return;
+          }
+          if (key === ']' || (isAlt && key === 'ArrowRight')) {
+            e.preventDefault();
+            this.shiftBacklogDate(1);
+            return;
+          }
+          if (key === 't' || key === 'T') {
+            e.preventDefault();
+            this.shiftBacklogDate(0);
             return;
           }
         }
