@@ -433,7 +433,7 @@ def test_seed_database_wards(tmp_path, monkeypatch):
     conn.close()
 
     seeded_wards = {r["name"] for r in rows}
-    expected_wards = {"ANC", "MCH", "Emergency", "Theater", "Labour", "OPD", "IPD", "Pediatrics", "TB Clinic"}
+    expected_wards = {"ANC", "MCH", "Emergency", "Theater", "Labour", "OPD", "IPD", "PAEDIATRIC", "TB Clinic"}
     assert expected_wards.issubset(seeded_wards)
     for r in rows:
         assert r["is_active"] == 1

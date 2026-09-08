@@ -208,3 +208,25 @@ def test_malaria_microscopy_parameters_seeding(db_connection):
     assert "Plasmodium falciparum" in species_opts
     assert "Plasmodium vivax" in species_opts
 
+def test_rft_panel_and_standalone_uric_acid(db_connection):
+    from backend.app.seed import seed_database
+    seed_database(conn=db_connection)
+    cur = db_connection.cursor()
+    cur.execute("SELECT id FROM tests WHERE name = 'RFTS'")
+    rft_id = cur.fetchone()[0]
+    cur.execute("SELECT parameter_name FROM test_parameters WHERE test_id = ?", (rft_id,))
+    rft_params = [r[0] for r in cur.fetchall()]
+    assert "Serum Potassium (K+)" in rft_params
+    assert "Serum Sodium (Na+)" in rft_params
+    assert "Serum Chloride (Cl-)" in rft_params
+    assert "Serum Creatinine" in rft_params
+    assert "Serum Urea" in rft_params
+    assert "Serum Uric Acid" in rft_params
+
+    # Check standalone Uric Acid
+    cur.execute("SELECT id, result_type FROM tests WHERE name = 'Serum Uric Acid' AND parent_rollup_id IS NULL")
+    row = cur.fetchone()
+    assert row is not None
+    assert row[1] == "quantitative"
+
+

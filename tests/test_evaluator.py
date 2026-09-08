@@ -111,3 +111,23 @@ def test_evaluator_color_and_turbidity_rules():
         res = evaluate_result("Color", val, dob, "Male", entry_date)
         assert res["flag"] == "\u26A0"
         assert res["is_abnormal"] is True
+
+def test_non_cbc_hematology_evaluator():
+    dob = datetime.date(1990, 1, 1)
+    entry_date = datetime.date(2025, 1, 1) # age 35
+
+    # ESR elevated
+    res_esr = evaluate_result("E.S.R (Erythrocyte Sedimentation Rate)", "45", dob, "Male", entry_date)
+    assert res_esr["flag"] == "H"
+    assert res_esr["is_abnormal"] is True
+
+    # PT elevated
+    res_pt = evaluate_result("Prothrombin Time (PT)", "18.5", dob, "Female", entry_date)
+    assert res_pt["flag"] == "H"
+    assert res_pt["is_abnormal"] is True
+
+    # INR elevated
+    res_inr = evaluate_result("International Normalized Ratio (INR)", "2.8", dob, "Male", entry_date)
+    assert res_inr["flag"] == "H"
+    assert res_inr["is_abnormal"] is True
+

@@ -111,3 +111,15 @@ def test_cross_analyte_edta_contamination():
     with pytest.raises(ValueError) as exc_info:
         validate_panel_consistency(param_map)
     assert "EDTA tube contamination detected" in str(exc_info.value)
+
+def test_creatinine_and_lft_validation_by_unit(db_conn):
+    # 4.8 mg/dL is elevated but valid physiologically (bounds: 0.17–28.28 mg/dL)
+    res_mg = validate_biochem_parameter(db_conn, "Serum Creatinine", "4.8", age=42, sex="Male", unit="mg/dL")
+    assert res_mg["flag"] in ["H", "H*"]
+    assert res_mg["is_abnormal"] is True
+
+    # 4.8 umol/L is an improbable sanity violation (sanity bounds: 15–2500 umol/L)
+    with pytest.raises(ValueError) as exc_info:
+        validate_biochem_parameter(db_conn, "Serum Creatinine", "4.8", age=42, sex="Male", unit="µmol/L")
+    assert "breaches physiological sanity limits" in str(exc_info.value)
+

@@ -137,3 +137,21 @@ def test_init_db_idempotency(tmp_path, monkeypatch):
     row = cur.fetchone()
     assert row["cnt"] == 1
     conn.close()
+
+def test_ward_seeding_paediatric(tmp_path, monkeypatch):
+    from backend.app.seed import seed_database
+    test_db_file = str(tmp_path / "test_paed.db")
+    monkeypatch.setattr("backend.app.database.DB_PATH", test_db_file)
+    init_db()
+    
+    conn = get_connection()
+    conn.row_factory = sqlite3.Row
+    seed_database(conn)
+    cur = conn.cursor()
+    cur.execute("SELECT name FROM wards WHERE UPPER(name) LIKE '%PAED%' OR UPPER(name) LIKE '%PED%'")
+    rows = [r["name"] for r in cur.fetchall()]
+    conn.close()
+    assert "PAEDIATRIC" in rows
+    assert "Pediatrics" not in rows
+    assert "Paediatrics" not in rows
+

@@ -20,3 +20,12 @@ This document tracks high-priority features, infrastructure hardening, and techn
   - Minimum volume thresholds and storage temperature guidelines per specimen type.
   - Linkage matrix mapping tests and panels to compatible specimen types to prevent invalid orders at accessioning.
   - Soft-deactivation protection preventing removal of specimen types referenced by existing clinical orders.
+
+## 3. Hematology Analyzer Parser Output Hardcoding & Failure Handling
+- **Priority**: High (Interoperability & Data Ingestion)
+- **Objective**: Generalize the hematology analyzer parser to handle varied message formats, delimiters, field offsets, and edge cases.
+- **Requirements**:
+  - Investigate analyzer parser logic across differing output modes / firmware formats.
+  - Collect sample raw payload dumps from failing analyzer outputs.
+  - Remove brittle hardcoded field index parsing; introduce resilient header/segment regex matching and graceful fallback error reporting.
+
