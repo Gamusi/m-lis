@@ -5636,25 +5636,97 @@ const app = {
   handleRefRangeParamSelection: function(paramName) {
     if (!paramName) return;
     const test = (this.testCatalog || []).find(t => t.name.toLowerCase() === paramName.trim().toLowerCase());
-    const unitInput = document.getElementById('ref-range-modal-unit');
-    if (test && test.default_unit && unitInput && !unitInput.value) {
-      unitInput.value = test.default_unit;
-    }
     
-    // Pre-populate plausible / sanity defaults from existing reference range rules if present
-    const existingRules = (this.referenceRangesList || []).filter(r => r.parameter_name.toLowerCase() === paramName.toLowerCase());
-    if (existingRules.length > 0) {
-      const template = existingRules[0];
-      if (unitInput && !unitInput.value && template.unit) unitInput.value = template.unit;
-      const sMin = document.getElementById('ref-range-modal-sanity-min');
-      const sMax = document.getElementById('ref-range-modal-sanity-max');
-      const pMin = document.getElementById('ref-range-modal-plausible-min');
-      const pMax = document.getElementById('ref-range-modal-plausible-max');
-      if (sMin && !sMin.value && template.sanity_min !== null) sMin.value = template.sanity_min;
-      if (sMax && !sMax.value && template.sanity_max !== null) sMax.value = template.sanity_max;
-      if (pMin && !pMin.value && template.plausible_min !== null) pMin.value = template.plausible_min;
-      if (pMax && !pMax.value && template.plausible_max !== null) pMax.value = template.plausible_max;
+    // Strictly bind available units to factual units defined in the test catalog (default_unit and secondary_unit)
+    const unitsSet = new Set();
+    if (test) {
+      if (test.default_unit) unitsSet.add(test.default_unit);
+      if (test.secondary_unit) unitsSet.add(test.secondary_unit);
     }
+
+    const unitContainer = document.getElementById('ref-range-modal-unit-container');
+    const unitHint = document.getElementById('ref-range-modal-unit-hint');
+    const unitArray = Array.from(unitsSet);
+
+    if (unitContainer) {
+      if (unitArray.length > 1) {
+        // Multi-unit test: show a direct dropdown selector
+        let opts = unitArray.map(u => `<option value="${this.escape(u)}">${this.escape(u)}</option>`).join('');
+        unitContainer.innerHTML = `
+          <select id="ref-range-modal-unit" style="width: 100%; padding: 8px;" onchange="app.handleRefRangeUnitChange(this.value, '${this.escape(paramName)}')">
+            ${opts}
+          </select>
+        `;
+        if (unitHint) {
+          unitHint.textContent = `This test supports multiple units (${unitArray.join(', ')}). Bounds update when unit changes.`;
+          unitHint.style.display = 'block';
+        }
+      } else {
+        // Single unit test: standard text input with datalist
+        const defaultVal = unitArray[0] || (test?.default_unit || '');
+        unitContainer.innerHTML = `
+          <input type="text" id="ref-range-modal-unit" list="ref-range-unit-datalist" value="${this.escape(defaultVal)}" placeholder="e.g. g/dL" style="width: 100%; padding: 8px;" onchange="app.handleRefRangeUnitChange(this.value, '${this.escape(paramName)}')">
+          <datalist id="ref-range-unit-datalist"></datalist>
+        `;
+        const datalist = document.getElementById('ref-range-unit-datalist');
+        if (datalist) {
+          unitArray.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u;
+            datalist.appendChild(opt);
+          });
+        }
+        if (unitHint) unitHint.style.display = 'none';
+      }
+    }
+
+    const currentUnit = document.getElementById('ref-range-modal-unit')?.value || unitArray[0] || null;
+    this.populateRefRangeBoundsForUnit(paramName, currentUnit);
+  },
+
+  handleRefRangeUnitChange: function(newUnit, paramName) {
+    if (!paramName) {
+      paramName = document.getElementById('ref-range-modal-param')?.value || '';
+    }
+    if (paramName) {
+      this.populateRefRangeBoundsForUnit(paramName, newUnit);
+    }
+  },
+
+  populateRefRangeBoundsForUnit: function(paramName, selectedUnit) {
+    if (!paramName) return;
+    const existingRules = (this.referenceRangesList || []).filter(r => r.parameter_name.toLowerCase() === paramName.trim().toLowerCase());
+    if (existingRules.length === 0) return;
+
+    // Look for template matching selected unit, otherwise complete bounds, otherwise first
+    let template = null;
+    if (selectedUnit) {
+      template = existingRules.find(r => r.unit && r.unit.toLowerCase() === selectedUnit.trim().toLowerCase() && r.normal_min !== null);
+      if (!template) {
+        template = existingRules.find(r => r.unit && r.unit.toLowerCase() === selectedUnit.trim().toLowerCase());
+      }
+    }
+    if (!template) {
+      template = existingRules.find(r => r.normal_min !== null && r.normal_max !== null) || existingRules[0];
+    }
+
+    const normMin = document.getElementById('ref-range-modal-norm-min');
+    const normMax = document.getElementById('ref-range-modal-norm-max');
+    const critMin = document.getElementById('ref-range-modal-crit-min');
+    const critMax = document.getElementById('ref-range-modal-crit-max');
+    const sMin = document.getElementById('ref-range-modal-sanity-min');
+    const sMax = document.getElementById('ref-range-modal-sanity-max');
+    const pMin = document.getElementById('ref-range-modal-plausible-min');
+    const pMax = document.getElementById('ref-range-modal-plausible-max');
+
+    if (normMin && template.normal_min !== null && template.normal_min !== undefined) normMin.value = template.normal_min;
+    if (normMax && template.normal_max !== null && template.normal_max !== undefined) normMax.value = template.normal_max;
+    if (critMin && template.critical_min !== null && template.critical_min !== undefined) critMin.value = template.critical_min;
+    if (critMax && template.critical_max !== null && template.critical_max !== undefined) critMax.value = template.critical_max;
+    if (sMin && template.sanity_min !== null && template.sanity_min !== undefined) sMin.value = template.sanity_min;
+    if (sMax && template.sanity_max !== null && template.sanity_max !== undefined) sMax.value = template.sanity_max;
+    if (pMin && template.plausible_min !== null && template.plausible_min !== undefined) pMin.value = template.plausible_min;
+    if (pMax && template.plausible_max !== null && template.plausible_max !== undefined) pMax.value = template.plausible_max;
   },
 
   showAddReferenceRangeModal: function() {
@@ -5681,6 +5753,7 @@ const app = {
     const r = (this.referenceRangesList || []).find(item => item.id === id);
     if (!r) return;
     this.populateRefRangeParamDropdown(r.parameter_name || '');
+    this.handleRefRangeParamSelection(r.parameter_name || '');
     document.getElementById('reference-range-modal-title').textContent = 'Edit Reference Range Rule';
     document.getElementById('ref-range-modal-id').value = r.id;
     document.getElementById('ref-range-modal-param').value = r.parameter_name || '';
@@ -5695,7 +5768,8 @@ const app = {
     document.getElementById('ref-range-modal-sanity-max').value = r.sanity_max !== null ? r.sanity_max : '';
     document.getElementById('ref-range-modal-plausible-min').value = r.plausible_min !== null ? r.plausible_min : '';
     document.getElementById('ref-range-modal-plausible-max').value = r.plausible_max !== null ? r.plausible_max : '';
-    document.getElementById('ref-range-modal-unit').value = r.unit || '';
+    const unitEl = document.getElementById('ref-range-modal-unit');
+    if (unitEl) unitEl.value = r.unit || '';
     this.openModal('reference-range-modal');
   },
 
@@ -6338,6 +6412,13 @@ const app = {
       document.getElementById('test-config-section').value = test.section_id;
       document.getElementById('test-config-result-type').value = test.result_type || 'qualitative';
       document.getElementById('test-config-unit').value = test.default_unit || '';
+      const hasSecondary = !!test.secondary_unit;
+      const multiCheckbox = document.getElementById('test-config-multi-units');
+      if (multiCheckbox) multiCheckbox.checked = hasSecondary;
+      const secGroup = document.getElementById('test-config-secondary-unit-group');
+      if (secGroup) secGroup.style.display = hasSecondary ? 'block' : 'none';
+      const secInput = document.getElementById('test-config-secondary-unit');
+      if (secInput) secInput.value = test.secondary_unit || '';
       try {
         document.getElementById('test-config-options').value = test.options ? JSON.parse(test.options).join(', ') : '';
       } catch(e) {
@@ -6352,6 +6433,12 @@ const app = {
       document.getElementById('test-config-id').value = '';
       document.getElementById('test-config-result-type').value = 'qualitative';
       document.getElementById('test-config-unit').value = '';
+      const multiCheckbox = document.getElementById('test-config-multi-units');
+      if (multiCheckbox) multiCheckbox.checked = false;
+      const secGroup = document.getElementById('test-config-secondary-unit-group');
+      if (secGroup) secGroup.style.display = 'none';
+      const secInput = document.getElementById('test-config-secondary-unit');
+      if (secInput) secInput.value = '';
       document.getElementById('test-config-options').value = '';
       document.getElementById('test-config-tracked').checked = true;
       document.getElementById('test-config-tracks-stock').checked = false;
@@ -6367,6 +6454,16 @@ const app = {
       yield app.saveTestConfig();
     });
   }),
+
+  handleTestMultiUnitsToggle: function() {
+    const isMulti = document.getElementById('test-config-multi-units')?.checked;
+    const group = document.getElementById('test-config-secondary-unit-group');
+    if (group) group.style.display = isMulti ? 'block' : 'none';
+    if (!isMulti) {
+      const secInput = document.getElementById('test-config-secondary-unit');
+      if (secInput) secInput.value = '';
+    }
+  },
 
   handleTestStockTrackingToggle: function() {
     const isTracks = document.getElementById('test-config-tracks-stock').checked;
@@ -6392,7 +6489,7 @@ const app = {
     
     if (rType === 'quantitative') {
       unitGroup.style.display = 'block';
-      if (unitLabel) unitLabel.textContent = 'Reporting Unit (Required):';
+      if (unitLabel) unitLabel.textContent = 'Primary / Default Reporting Unit:';
       if (unitInput) unitInput.required = true;
       optionsGroup.style.display = 'none';
       document.getElementById('test-config-options').value = '';
@@ -6427,6 +6524,9 @@ const app = {
     const section_id = parseInt(document.getElementById('test-config-section').value, 10);
     const result_type = document.getElementById('test-config-result-type').value;
     const default_unit = document.getElementById('test-config-unit').value.trim() || null;
+    const isMultiUnit = document.getElementById('test-config-multi-units')?.checked;
+    const secUnitVal = document.getElementById('test-config-secondary-unit')?.value.trim();
+    const secondary_unit = (isMultiUnit && secUnitVal) ? secUnitVal : null;
     const optionsRaw = document.getElementById('test-config-options').value;
     const is_tracked = document.getElementById('test-config-tracked').checked;
     const tracks_stock = document.getElementById('test-config-tracks-stock').checked;
@@ -6445,7 +6545,7 @@ const app = {
       options = JSON.stringify(optionsRaw.split(',').map(s => s.trim()).filter(s => s));
     }
 
-    const payload = { name, section_id, is_tracked, result_type, default_unit, options, sort_order: 0, parent_rollup_id, tracks_stock, consumable_name, clinical_comments };
+    const payload = { name, section_id, is_tracked, result_type, default_unit, secondary_unit, options, sort_order: 0, parent_rollup_id, tracks_stock, consumable_name, clinical_comments };
     
     try {
       let res;

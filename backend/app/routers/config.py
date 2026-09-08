@@ -111,8 +111,8 @@ def create_test(req: TestCreate, admin_user: dict = Depends(require_admin), conn
 
     try:
         cur.execute(
-            "INSERT INTO tests (name, section_id, is_tracked, sort_order, result_type, default_unit, options, parent_rollup_id, tracks_stock, consumable_name, clinical_comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (req.name, req.section_id, effective_tracked, req.sort_order, req.result_type, req.default_unit, req.options, req.parent_rollup_id, tracks_stock_val, req.consumable_name, req.clinical_comments)
+            "INSERT INTO tests (name, section_id, is_tracked, sort_order, result_type, default_unit, secondary_unit, options, parent_rollup_id, tracks_stock, consumable_name, clinical_comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (req.name, req.section_id, effective_tracked, req.sort_order, req.result_type, req.default_unit, req.secondary_unit, req.options, req.parent_rollup_id, tracks_stock_val, req.consumable_name, req.clinical_comments)
         )
         tid = cur.lastrowid
         conn.commit()
@@ -128,7 +128,7 @@ def create_test(req: TestCreate, admin_user: dict = Depends(require_admin), conn
     conn.execute("INSERT INTO audit_log (user_id, action, detail) VALUES (?, ?, ?)", (admin_user["id"], "create_test", f"Created test '{req.name}'"))
     conn.commit()
     
-    return {"id": tid, "name": req.name, "section_id": req.section_id, "is_tracked": bool(effective_tracked), "result_type": req.result_type, "default_unit": req.default_unit, "options": req.options, "parent_rollup_id": req.parent_rollup_id, "tracks_stock": bool(tracks_stock_val), "consumable_name": req.consumable_name, "clinical_comments": req.clinical_comments}
+    return {"id": tid, "name": req.name, "section_id": req.section_id, "is_tracked": bool(effective_tracked), "result_type": req.result_type, "default_unit": req.default_unit, "secondary_unit": req.secondary_unit, "options": req.options, "parent_rollup_id": req.parent_rollup_id, "tracks_stock": bool(tracks_stock_val), "consumable_name": req.consumable_name, "clinical_comments": req.clinical_comments}
     
 
 @router.put("/tests/{test_id}", response_model=TestResponse)
@@ -149,9 +149,9 @@ def update_test(test_id: int, req: TestCreate, admin_user: dict = Depends(requir
     try:
         cur.execute("""
             UPDATE tests
-            SET name = ?, section_id = ?, is_tracked = ?, sort_order = ?, result_type = ?, default_unit = ?, options = ?, parent_rollup_id = ?, tracks_stock = ?, consumable_name = ?, clinical_comments = ?
+            SET name = ?, section_id = ?, is_tracked = ?, sort_order = ?, result_type = ?, default_unit = ?, secondary_unit = ?, options = ?, parent_rollup_id = ?, tracks_stock = ?, consumable_name = ?, clinical_comments = ?
             WHERE id = ?
-        """, (req.name, req.section_id, effective_tracked, req.sort_order, req.result_type, req.default_unit, req.options, req.parent_rollup_id, tracks_stock_val, req.consumable_name, req.clinical_comments, test_id))
+        """, (req.name, req.section_id, effective_tracked, req.sort_order, req.result_type, req.default_unit, req.secondary_unit, req.options, req.parent_rollup_id, tracks_stock_val, req.consumable_name, req.clinical_comments, test_id))
         conn.commit()
     except sqlite3.IntegrityError as e:
         conn.rollback()
@@ -167,7 +167,7 @@ def update_test(test_id: int, req: TestCreate, admin_user: dict = Depends(requir
     return TestResponse(
         id=test_id, name=req.name, section_id=req.section_id, 
         is_tracked=bool(effective_tracked), sort_order=req.sort_order, is_active=bool(test_row["is_active"]),
-        result_type=req.result_type, default_unit=req.default_unit, options=req.options,
+        result_type=req.result_type, default_unit=req.default_unit, secondary_unit=req.secondary_unit, options=req.options,
         parent_rollup_id=req.parent_rollup_id, tracks_stock=bool(tracks_stock_val),
         consumable_name=req.consumable_name, clinical_comments=req.clinical_comments
     )

@@ -383,8 +383,21 @@
           </select>
         </div>
         <div class="form-group" id="test-config-unit-group" style="margin-bottom: 12px; display: none;">
-          <label id="test-config-unit-label">Reporting Unit:</label>
-          <input type="text" id="test-config-unit" placeholder="e.g. g/dL" style="width: 100%; padding: 8px;">
+          <label id="test-config-unit-label">Primary / Default Reporting Unit:</label>
+          <input type="text" id="test-config-unit" placeholder="e.g. mmol/L or g/dL" style="width: 100%; padding: 8px;">
+          
+          <div style="margin-top: 8px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">
+              <input type="checkbox" id="test-config-multi-units" onchange="app.handleTestMultiUnitsToggle()"> Enable Multiple / Alternate Units
+            </label>
+          </div>
+          <div id="test-config-secondary-unit-group" style="margin-top: 8px; display: none;">
+            <label style="font-size: 0.8rem; color: var(--text-dark);">Secondary / Alternate Unit:</label>
+            <input type="text" id="test-config-secondary-unit" placeholder="e.g. mg/dL" style="width: 100%; padding: 8px;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+              Both units will be selectable during result entry and in reference range rules.
+            </div>
+          </div>
         </div>
         <div class="form-group" id="test-config-options-group" style="margin-bottom: 12px;">
           <label>Options (comma separated, for dropdown):</label>
@@ -640,7 +653,11 @@
         </div>
         <div class="form-group" style="margin-bottom: 16px;">
           <label for="ref-range-modal-unit">Unit</label>
-          <input type="text" id="ref-range-modal-unit" placeholder="e.g. g/dL" style="width: 100%; padding: 8px;">
+          <div id="ref-range-modal-unit-container">
+            <input type="text" id="ref-range-modal-unit" list="ref-range-unit-datalist" placeholder="e.g. g/dL" style="width: 100%; padding: 8px;" onchange="app.handleRefRangeUnitChange(this.value)">
+            <datalist id="ref-range-unit-datalist"></datalist>
+          </div>
+          <div id="ref-range-modal-unit-hint" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 3px; display: none;"></div>
         </div>
         <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
           <button type="button" class="btn btn-secondary" onclick="app.closeModal('reference-range-modal')">Cancel</button>

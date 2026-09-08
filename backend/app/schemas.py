@@ -48,6 +48,7 @@ class TestBase(BaseModel):
     sort_order: int = 0
     result_type: str = "qualitative"
     default_unit: Optional[str] = None
+    secondary_unit: Optional[str] = None
     options: Optional[str] = None
     parent_rollup_id: Optional[int] = None
     tracks_stock: Optional[bool] = False
