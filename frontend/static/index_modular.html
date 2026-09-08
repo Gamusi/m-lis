@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M-LIS</title>
+  <link rel="icon" type="image/x-icon" href="/assets/branding/favicon.ico">
+  <link rel="stylesheet" href="/static/css/style.css?v=6">
+</head>
+<body>
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="brand-container">
+      <img id="header-logo" src="/assets/branding/logo_white.png" alt="M-LIS Logo" class="brand-logo">
+      <div class="brand-titles">
+        <h1 id="app-title">M-LIS</h1>
+        <p id="facility-name">Ahmadiyya Muslim Hospital</p>
+      </div>
+    </div>
+    <div class="user-nav" id="user-nav">
+      <!-- User profile & Logout populated by app.js -->
+    </div>
+  </header>
+
+  <!-- Navigation Bar -->
+  <nav class="app-nav" id="app-nav" style="display: none;">
+    <button class="nav-tab active" onclick="app.navigate('clients')"><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" x2="8" y1="13" y2="13"></line><line x1="16" x2="8" y1="17" y2="17"></line><line x1="10" x2="8" y1="9" y2="9"></line></svg> Lab Reports</button>
+    <button class="nav-tab" onclick="app.navigate('daily-log')"><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"></rect><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><path d="M12 11h4"></path><path d="M12 16h4"></path><path d="M8 11h.01"></path><path d="M8 16h.01"></path></svg> Daily Log</button>
+    <button class="nav-tab" onclick="app.navigate('backlog')"><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"></path><path d="M6 6h10"></path><path d="M6 10h10"></path><path d="M6 14h6"></path></svg> Backlog</button>
+    <button class="nav-tab" onclick="app.navigate('inventory')"><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"></path><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path><path d="m3.3 7 8.7 5 8.7-5"></path><path d="M12 22V12"></path></svg> Inventory</button>
+    <button class="nav-tab admin-only" onclick="app.navigate('reports')"><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="18" y1="20" y2="10"></line><line x1="12" x2="12" y1="20" y2="4"></line><line x1="6" x2="6" y1="20" y2="14"></line></svg> Performance</button>
+    <button class="nav-tab admin-only" onclick="app.navigate('config')"><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg> Configuration</button>
+    <button class="nav-tab superadmin-only" onclick="app.navigate('audit')"><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg> Audit Log</button>
+    <button class="nav-tab admin-only" onclick="app.openBulkExportModal()"><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg> Export</button>
+    <button class="nav-tab admin-only" onclick="app.openBulkImportModal()"><svg class="lucide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" x2="12" y1="3" y2="15"></line></svg> Import</button>
+  </nav>
+
+  <!-- Main View Container -->
+  <main class="main-container" id="view-container">
+    <!-- View content dynamically rendered by app.js -->
+  </main>
+
+  <!-- New Client Modal -->
+  <div class="modal-overlay" id="new-client-modal" style="display: none;">
+    <div class="modal-content">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h2 style="color: var(--primary-color);">Register New Client</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Enter the client's details.</p>
+      </div>
+      <form id="new-client-form" onsubmit="app.handleRegisterClientSubmit(event)">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="client-name">Full Name *</label>
+          <input type="text" id="client-name" required placeholder="Enter Client Full Name">
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="client-sex">Gender *</label>
+          <select id="client-sex" required>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="client-category">Age Category *</label>
+          <select id="client-category" required onchange="app.updateAgePlaceholder()">
+            <option value="Adult">Adult (15+ years)</option>
+            <option value="Child">Child (4-14 years)</option>
+            <option value="Toddler">Toddler (1-3 years)</option>
+            <option value="Infant">Infant (1m - 1 year)</option>
+            <option value="Neonate">Neonate (0-28 days)</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="client-age">Age *</label>
+          <input type="text" id="client-age" required placeholder="e.g. 25, 25y">
+        </div>
+        <div class="form-group" style="margin-bottom: 24px;">
+          <label for="client-phone">Phone Number (Optional)</label>
+          <input type="text" id="client-phone" placeholder="Enter Phone Number">
+        </div>
+        <div style="display: flex; gap: 12px; margin-top: 24px;">
+          <button type="button" class="btn btn-secondary" onclick="app.closeNewClientModal()" style="flex: 1; padding: 12px; font-weight: 500;">Cancel</button>
+          <button type="submit" class="btn btn-primary" style="flex: 1; padding: 12px; font-weight: 500;">Register Client</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Login Modal -->
+  <div class="modal-overlay" id="login-modal" style="display: none;">
+    <div class="modal-content">
+      <!-- Login Container -->
+      <div id="login-form-container">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h2 style="color: var(--primary-color);">Lab Staff Login</h2>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Sign in to access M-LIS</p>
+        </div>
+        <form id="login-form" onsubmit="app.handleLogin(event)">
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label for="login-username">Username</label>
+            <input type="text" id="login-username" required placeholder="Enter username">
+          </div>
+          <div class="form-group" style="margin-bottom: 24px;">
+            <label for="login-password">Password</label>
+            <div style="position: relative; display: flex; align-items: center; width: 100%;">
+              <input type="password" id="login-password" required placeholder="Enter password" style="padding-right: 40px; width: 100%;">
+              <button type="button" onclick="app.togglePasswordVisibility('login-password')" style="position: absolute; right: 12px; background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0; display: flex; align-items: center;">
+                <svg class="lucide" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              </button>
+            </div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div id="login-error" style="color: var(--danger-color); font-size: 0.85rem; display: none;"></div>
+            <a href="#" onclick="app.showForgotPassword(event)" style="font-size: 0.8rem; color: var(--primary-color); text-decoration: none; margin-left: auto;">Forgot Password?</a>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 10px;">Sign In</button>
+          <p style="text-align: center; font-size: 0.85rem; margin-top: 16px; color: var(--text-muted);">
+            New user? <a href="#" onclick="app.showRegisterForm(event)" style="color: var(--primary-color); font-weight: 600; text-decoration: none;">Register here</a>
+          </p>
+        </form>
+      </div>
+
+      <!-- Forgot Password Container (hidden by default) -->
+      <div id="forgot-password-container" style="display: none;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h2 style="color: var(--primary-color);">Password Reset</h2>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Self-service recovery guidance</p>
+        </div>
+        <div style="background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 6px; padding: 16px; margin-bottom: 20px; font-size: 0.85rem; line-height: 1.5; color: var(--text-dark);">
+          <p style="margin-top: 0; margin-bottom: 10px;"><strong>Need a password reset?</strong></p>
+          <p style="margin-bottom: 10px;">For patient data security and compliance with MoH laboratory standards, passwords must be reset by a <strong>Laboratory Administrator</strong> or <strong>Super Administrator</strong>.</p>
+          <p style="margin-bottom: 0;">Please contact your lab in-charge or system administrator to receive a temporary reset password.</p>
+        </div>
+        <button type="button" class="btn btn-primary" style="width: 100%; padding: 10px;" onclick="app.showLoginForm(event)">Back to Sign In</button>
+      </div>
+
+      <!-- Register Container (hidden by default) -->
+      <div id="register-form-container" style="display: none;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h2 style="color: var(--primary-color);">Create Account</h2>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Register a new Lab staff profile</p>
+        </div>
+        <form id="register-form" onsubmit="app.handleRegister(event)">
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label for="register-fullname">Full Name</label>
+            <input type="text" id="register-fullname" required placeholder="Enter full name">
+          </div>
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label for="register-username">Username</label>
+            <input type="text" id="register-username" required placeholder="Enter username">
+          </div>
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label for="register-cadre">Cadre</label>
+            <select id="register-cadre" required style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
+              <option value="" disabled selected>Select your cadre</option>
+              <option value="Medical Laboratory Assistant">Medical Laboratory Assistant (Certificate)</option>
+              <option value="Medical Laboratory Technician">Medical Laboratory Technician (Diploma)</option>
+              <option value="Senior Medical Laboratory Technician">Senior Medical Laboratory Technician</option>
+              <option value="Principal Medical Laboratory Technician">Principal Medical Laboratory Technician</option>
+              <option value="Medical Laboratory Technologist / Scientist">Medical Laboratory Technologist / Scientist (Degree)</option>
+              <option value="Senior Medical Laboratory Technologist">Senior Medical Laboratory Technologist</option>
+              <option value="Principal Medical Laboratory Technologist">Principal Medical Laboratory Technologist</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 24px;">
+            <label for="register-password">Password</label>
+            <div style="position: relative; display: flex; align-items: center; width: 100%;">
+              <input type="password" id="register-password" required placeholder="Enter password" style="padding-right: 40px; width: 100%;">
+              <button type="button" onclick="app.togglePasswordVisibility('register-password')" style="position: absolute; right: 12px; background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0; display: flex; align-items: center;">
+                <svg class="lucide" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              </button>
+            </div>
+          </div>
+          <div id="register-error" style="color: var(--danger-color); font-size: 0.85rem; margin-bottom: 16px; display: none;"></div>
+          <div id="register-success" style="color: var(--success-color); font-size: 0.85rem; margin-bottom: 16px; display: none;"></div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 10px;">Register</button>
+          <p style="text-align: center; font-size: 0.85rem; margin-top: 16px; color: var(--text-muted);">
+            Already have an account? <a href="#" onclick="app.showLoginForm(event)" style="color: var(--primary-color); font-weight: 600; text-decoration: none;">Sign in here</a>
+          </p>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reset Password Modal (Mandatory Temporary Password Change) -->
+  <div class="modal-overlay" id="reset-password-modal" style="display: none;">
+    <div class="modal-content">
+      <div id="reset-password-form-container">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h2 style="color: var(--primary-color);">Change Temporary Password</h2>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">An Admin has reset your password. You must set a new password to proceed.</p>
+        </div>
+        <form id="reset-password-form" onsubmit="app.handleChangePassword(event)">
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label for="reset-old-password">Current / Temporary Password</label>
+            <div style="position: relative; display: flex; align-items: center; width: 100%;">
+              <input type="password" id="reset-old-password" required placeholder="Enter current temporary password" style="padding-right: 40px; width: 100%;">
+              <button type="button" onclick="app.togglePasswordVisibility('reset-old-password')" style="position: absolute; right: 12px; background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0; display: flex; align-items: center;">
+                <svg class="lucide" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              </button>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label for="reset-new-password">New Password</label>
+            <div style="position: relative; display: flex; align-items: center; width: 100%;">
+              <input type="password" id="reset-new-password" required placeholder="Enter new password (min 4 chars)" style="padding-right: 40px; width: 100%;">
+              <button type="button" onclick="app.togglePasswordVisibility('reset-new-password')" style="position: absolute; right: 12px; background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0; display: flex; align-items: center;">
+                <svg class="lucide" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              </button>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom: 24px;">
+            <label for="reset-confirm-password">Confirm New Password</label>
+            <div style="position: relative; display: flex; align-items: center; width: 100%;">
+              <input type="password" id="reset-confirm-password" required placeholder="Confirm new password" style="padding-right: 40px; width: 100%;">
+              <button type="button" onclick="app.togglePasswordVisibility('reset-confirm-password')" style="position: absolute; right: 12px; background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0; display: flex; align-items: center;">
+                <svg class="lucide" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              </button>
+            </div>
+          </div>
+          <div id="reset-password-error" style="color: var(--danger-color); font-size: 0.85rem; margin-bottom: 16px; display: none;"></div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 10px;">Update Password</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Footer -->
+  <footer class="app-footer">
+    <span id="footer-text">© M-LIS 2026</span>
+  </footer>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container"></div>
+
+  
+  <!-- Result Entry Modal -->
+  <div id="result-entry-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="width: 680px; max-width: 95vw; max-height: 88vh; display: flex; flex-direction: column;">
+      <h3 id="result-entry-modal-title" style="margin-top: 0; margin-bottom: 4px; color: var(--primary-color);">Enter Result</h3>
+      <p id="result-entry-test-name" style="font-weight: bold; margin-bottom: 12px; color: var(--text-dark);"></p>
+      
+      <form id="result-entry-form" style="display: flex; flex-direction: column; flex: 1; overflow-y: auto; padding-right: 4px;">
+        <input type="hidden" id="result-entry-order-id">
+        <input type="hidden" id="result-entry-test-id">
+        <input type="hidden" id="result-entry-visit-id">
+        <input type="hidden" id="result-entry-is-edit" value="0">
+        
+        <div id="result-entry-single-container" style="display: none;">
+            <div class="form-group" style="margin-bottom: 16px;">
+              <label>Result Value:</label>
+              <input type="text" id="result-entry-value" placeholder="e.g. 13.5 or Positive" style="width: 100%; padding: 8px;">
+            </div>
+        </div>
+
+        <!-- Analyzer Paste Section (for CBC) -->
+        <div id="result-entry-analyzer-section" style="display: none; margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-weight: 600; font-size: 0.9rem; color: var(--primary-color);">Capture from Analyzer:</span>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-analyzer-paste" onclick="app.toggleAnalyzerPaste()">Paste from Analyzer</button>
+          </div>
+          <div id="analyzer-paste-container" style="display: none; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 6px; padding: 10px; margin-bottom: 10px;">
+            <label for="analyzer-raw-input" style="font-size: 0.8rem; font-weight: 600; color: #166534; display: block; margin-bottom: 4px;">Paste raw Nihon Kohden output text:</label>
+            <textarea id="analyzer-raw-input" rows="3" placeholder="Paste instrument text here e.g. [host] [Send] MEK-7222..." style="width: 100%; padding: 6px; font-family: monospace; font-size: 0.75rem; border: 1px solid #86EFAC; border-radius: 4px; box-sizing: border-box;"></textarea>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+              <span id="analyzer-parse-status" style="font-size: 0.8rem; color: #15803D;"></span>
+              <div style="display: flex; gap: 8px;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="app.toggleAnalyzerPaste(false)">Close</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="app.parseAndPopulateAnalyzerData()">Parse & Populate</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="result-entry-params-container" style="display: none; margin-bottom: 16px; max-height: 52vh; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; padding: 12px; background: #FAFAFA;">
+            <!-- Parameters will be injected here -->
+        </div>
+
+        <div class="form-group" id="result-entry-reason-group" style="margin-bottom: 16px; display: none;">
+          <label style="font-weight: bold; color: var(--text-dark);">Reason for Edit <span style="color: red;">*</span>:</label>
+          <textarea id="result-entry-reason" rows="2" placeholder="Required for modifying an existing result..." style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box;"></textarea>
+        </div>
+        
+        <div class="form-group" id="result-entry-tracked-group" style="margin-bottom: 16px; display: none; background: #FEF2F2; padding: 12px; border: 1px solid #FCA5A5; border-radius: 4px;">
+          <label style="color: #991B1B; font-weight: bold;">Surveillance / Register Mapping:</label>
+          <p style="font-size: 0.85rem; margin-bottom: 8px;">This test is tracked for Ministry reporting.</p>
+          <select id="result-entry-is-positive" style="width: 100%; padding: 8px;">
+            <option value="false">Normal / Negative</option>
+            <option value="true">Abnormal / Positive</option>
+          </select>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+          <button type="button" class="btn btn-secondary" onclick="app.closeModal('result-entry-modal')">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="result-entry-submit-btn">Save Result</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+
+  <!-- Notification Modal -->
+  <div id="notification-modal" class="modal-overlay" style="display: none; z-index: 10000;">
+    <div class="modal-content" style="max-width: 400px; text-align: center;">
+      <h3 id="notif-title" style="margin-top: 0;"></h3>
+      <p id="notif-message" style="margin-bottom: 24px; color: var(--text-color);"></p>
+      <button class="btn btn-primary" onclick="app.closeModal('notification-modal')" style="width: 100%;">OK</button>
+    </div>
+  </div>
+
+  <!-- Add Test to Visit Modal -->
+  <div id="add-test-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+      <h3 style="margin-top: 0; color: var(--primary-color);">Add Test to Visit</h3>
+      <input type="hidden" id="add-test-visit-id">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+        <div class="form-group">
+          <label for="add-test-order-category">Order Category</label>
+          <select id="add-test-order-category" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box;">
+            <option value="in-house" selected>In-house</option>
+            <option value="referral">Referral</option>
+            <option value="outreach">Outreach</option>
+            <option value="self-request">Self-request</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="add-test-section">Lab Section</label>
+          <select id="add-test-section" onchange="app.filterAddTests()" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box;">
+            <option value="all">All Sections</option>
+          </select>
+        </div>
+      </div>
+      <!-- Selected Tests Summary Bar -->
+      <div id="add-test-selected-summary-bar" style="display: none; padding: 8px 12px; background: #EFF6FF; border: 1px solid #93C5FD; border-radius: 4px; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 600;">Selected Tests (<span id="add-test-selected-count">0</span>)</span>
+          <button type="button" onclick="app.clearAllAddModalSelectedTests()" style="font-size: 0.75rem; color: var(--danger-color); background: none; border: none; cursor: pointer; padding: 0; text-decoration: underline;">Clear All</button>
+        </div>
+        <div id="add-test-selected-chips-container" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+      </div>
+
+      <input type="text" id="add-test-search" placeholder="Search tests..." onkeyup="app.filterAddTests()" style="width: 100%; padding: 8px; margin-bottom: 12px; box-sizing: border-box;">
+      <div id="add-tests-container" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 4px; padding: 8px; background: #fff; margin-bottom: 16px;">
+        Loading...
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 12px;">
+        <button class="btn btn-secondary" onclick="app.closeModal('add-test-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="app.submitAddTests()">Add Selected</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Test Config Modal -->
+  <div id="test-config-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 500px;">
+      <h3 id="test-config-title" style="margin-top: 0; color: var(--primary-color);">Test Configuration</h3>
+      <form id="test-config-form">
+        <input type="hidden" id="test-config-id">
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label>Test Name:</label>
+          <input type="text" id="test-config-name" required style="width: 100%; padding: 8px;">
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label>Section:</label>
+          <select id="test-config-section" required style="width: 100%; padding: 8px;"></select>
+        </div>
+        <div class="form-group" id="test-config-parent-group" style="margin-bottom: 12px;">
+          <label>Parent Panel (optional):</label>
+          <select id="test-config-parent" style="width: 100%; padding: 8px;">
+            <option value="">None (standalone test)</option>
+          </select>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+            If this test belongs under a panel (e.g. CBC, LFTS), select it here.
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label>Result Type:</label>
+          <select id="test-config-result-type" required style="width: 100%; padding: 8px;" onchange="app.handleTestResultTypeChange()">
+            <option value="qualitative">Qualitative</option>
+            <option value="quantitative">Quantitative</option>
+            <option value="semi_quantitative">Semi-Quantitative</option>
+          </select>
+        </div>
+        <div class="form-group" id="test-config-unit-group" style="margin-bottom: 12px; display: none;">
+          <label id="test-config-unit-label">Primary / Default Reporting Unit:</label>
+          <input type="text" id="test-config-unit" placeholder="e.g. mmol/L or g/dL" style="width: 100%; padding: 8px;">
+          
+          <div style="margin-top: 8px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 500;">
+              <input type="checkbox" id="test-config-multi-units" onchange="app.handleTestMultiUnitsToggle()"> Enable Multiple / Alternate Units
+            </label>
+          </div>
+          <div id="test-config-secondary-unit-group" style="margin-top: 8px; display: none;">
+            <label style="font-size: 0.8rem; color: var(--text-dark);">Secondary / Alternate Unit:</label>
+            <input type="text" id="test-config-secondary-unit" placeholder="e.g. mg/dL" style="width: 100%; padding: 8px;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+              Both units will be selectable during result entry and in reference range rules.
+            </div>
+          </div>
+        </div>
+        <div class="form-group" id="test-config-options-group" style="margin-bottom: 12px;">
+          <label>Options (comma separated, for dropdown):</label>
+          <input type="text" id="test-config-options" placeholder="e.g. Positive, Negative, Invalid" style="width: 100%; padding: 8px;">
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="test-config-tracked"> Track Positives / Target Findings
+          </label>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+            Enables tracking positive/abnormal event counts for disease surveillance and incidence reports.
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom: 12px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="test-config-tracks-stock" onchange="app.handleTestStockTrackingToggle()"> Track Kit / Consumable Stock
+          </label>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+            Enables automated inventory deduction and stock monitoring for test kits, strips, or cassettes.
+          </div>
+        </div>
+        <div class="form-group" id="test-config-consumable-group" style="margin-bottom: 12px; display: none;">
+          <label for="test-config-consumable-name">Diagnostic Kit / Consumable Name:</label>
+          <input type="text" id="test-config-consumable-name" placeholder="e.g. Malaria Rapid Diagnostic Test (RDT)" style="width: 100%; padding: 8px;">
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="test-config-comments">Clinical Correlation & Interpretive Comment:</label>
+          <textarea id="test-config-comments" rows="3" placeholder="Clinical utility, normal correlates, abnormal correlates, and medical implications..." style="width: 100%; padding: 8px; font-size: 0.85rem; font-family: inherit; box-sizing: border-box;"></textarea>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+          <button type="button" class="btn btn-secondary" onclick="app.closeModal('test-config-modal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Config</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Receive Stock Lot Modal -->
+  <div id="receive-stock-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 500px;">
+      <h3 style="margin-top: 0; color: var(--primary-color);">Receive New Stock Lot</h3>
+      <form id="receive-stock-form" onsubmit="app.submitReceiveStock(event)">
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="receive-stock-kit">Diagnostic Kit / Consumable Name *:</label>
+          <input type="text" id="receive-stock-kit" required placeholder="e.g. MHS HIV 1/2 Kwiq Test" list="registered-kits-list" style="width: 100%; padding: 8px; box-sizing: border-box;">
+          <datalist id="registered-kits-list"></datalist>
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="receive-stock-category">Section / Category:</label>
+          <select id="receive-stock-category" style="width: 100%; padding: 8px; box-sizing: border-box;">
+            <option value="Serology / HIV">Serology / HIV</option>
+            <option value="Parasitology">Parasitology</option>
+            <option value="Serology">Serology</option>
+            <option value="Urinalysis">Urinalysis</option>
+            <option value="Molecular / EID">Molecular / EID</option>
+            <option value="General">General</option>
+          </select>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+          <div class="form-group">
+            <label for="receive-stock-lot-no">Lot / Batch Number *:</label>
+            <input type="text" id="receive-stock-lot-no" required placeholder="e.g. LOT-2026-01" style="width: 100%; padding: 8px; box-sizing: border-box;">
+          </div>
+          <div class="form-group">
+            <label for="receive-stock-expiry">Expiration Date *:</label>
+            <input type="date" id="receive-stock-expiry" required style="width: 100%; padding: 8px; box-sizing: border-box;">
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+          <div class="form-group">
+            <label for="receive-stock-quantity">Initial Quantity (Units) *:</label>
+            <input type="number" id="receive-stock-quantity" min="1" required placeholder="e.g. 100" style="width: 100%; padding: 8px; box-sizing: border-box;">
+          </div>
+          <div class="form-group">
+            <label for="receive-stock-threshold">Min Buffer Threshold:</label>
+            <input type="number" id="receive-stock-threshold" min="1" value="25" style="width: 100%; padding: 8px; box-sizing: border-box;">
+          </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+          <button type="button" class="btn btn-secondary" onclick="app.closeModal('receive-stock-modal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Receive Stock</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Stock Adjustment / Wastage Modal -->
+  <div id="adjust-stock-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 480px;">
+      <h3 id="adjust-stock-title" style="margin-top: 0; color: var(--primary-color);">Log Stock Adjustment / Wastage</h3>
+      <form id="adjust-stock-form" onsubmit="app.submitAdjustStock(event)">
+        <input type="hidden" id="adjust-stock-lot-id">
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label>Selected Lot:</label>
+          <p id="adjust-stock-lot-info" style="font-weight: 600; color: var(--text-dark); margin: 4px 0;"></p>
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="adjust-stock-type">Adjustment Action *:</label>
+          <select id="adjust-stock-type" required onchange="app.handleAdjustStockTypeChange()" style="width: 100%; padding: 8px; box-sizing: border-box;">
+            <option value="WASTAGE_QC">Wastage / Internal QC / Damaged</option>
+            <option value="ADJUSTMENT">Physical Recount / Stock Balance Correction</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="adjust-stock-delta" id="adjust-stock-qty-label">Number of Units to Deduct / Waste (e.g. 2) *:</label>
+          <input type="number" id="adjust-stock-delta" required placeholder="e.g. 2" style="width: 100%; padding: 8px; box-sizing: border-box;">
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="adjust-stock-reason">Reason *:</label>
+          <textarea id="adjust-stock-reason" required rows="3" placeholder="Required explanation for adjustment or QC wastage..." style="width: 100%; padding: 8px; box-sizing: border-box;"></textarea>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+          <button type="button" class="btn btn-secondary" onclick="app.closeModal('adjust-stock-modal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Apply Adjustment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Ward Modal (Add / Edit) -->
+  <div id="ward-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 400px;">
+      <h3 id="ward-modal-title" style="margin-top: 0; color: var(--primary-color);">Add Ward</h3>
+      <form id="ward-modal-form" onsubmit="app.submitWardModal(event)">
+        <input type="hidden" id="ward-modal-id">
+        <input type="hidden" id="ward-modal-active" value="1">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="ward-modal-name">Ward Name:</label>
+          <input type="text" id="ward-modal-name" required placeholder="e.g. Medical Ward" style="width: 100%; padding: 8px;">
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+          <button type="button" class="btn btn-secondary" onclick="app.closeModal('ward-modal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Ward</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Backlog Coverage / Status Modal -->
+  <div id="backlog-coverage-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 780px; width: 92vw; max-height: 85vh; display: flex; flex-direction: column;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+        <h3 style="margin: 0; color: var(--primary-color);">Historical Backlog Coverage & Status</h3>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="app.closeModal('backlog-coverage-modal')">Close</button>
+      </div>
+      <div style="display: flex; gap: 12px; align-items: flex-end; margin-bottom: 16px; flex-wrap: wrap; background: #F8FAFC; padding: 12px; border-radius: 6px;">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="coverage-start-date" style="font-size: 0.8rem; font-weight: 600;">Start Date:</label>
+          <input type="date" id="coverage-start-date" style="padding: 4px 8px; font-size: 0.85rem;">
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="coverage-end-date" style="font-size: 0.8rem; font-weight: 600;">End Date:</label>
+          <input type="date" id="coverage-end-date" style="padding: 4px 8px; font-size: 0.85rem;">
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" onclick="app.loadBacklogCoverageMatrix()">Load Coverage</button>
+      </div>
+      <div id="coverage-summary-bar" style="display: flex; gap: 20px; background: #EFF6FF; padding: 10px 14px; border-radius: 6px; margin-bottom: 14px; border: 1px solid #BFDBFE; font-size: 0.85rem;">
+        <div><strong>Days Logged:</strong> <span id="cov-days-logged">0</span> / <span id="cov-total-days">0</span> (<span id="cov-rate">0%</span>)</div>
+        <div><strong>Total Tests:</strong> <span id="cov-total-tests">0</span></div>
+        <div><strong>Total Findings:</strong> <span id="cov-total-pos">0</span></div>
+      </div>
+      <div id="coverage-matrix-container" style="flex: 1; overflow-y: auto; max-height: 50vh; border: 1px solid var(--border-color); border-radius: 6px;">
+        <!-- Matrix injected by app.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Clinician Modal -->
+  <div id="clinician-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 400px;">
+      <h3 style="margin-top: 0; color: var(--primary-color);">Add Clinician</h3>
+      <form onsubmit="app.submitClinicianModal(event)">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="clinician-modal-name">Clinician Name:</label>
+          <input type="text" id="clinician-modal-name" required placeholder="e.g. Dr. Smith" style="width: 100%; padding: 8px;">
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+          <button type="button" class="btn btn-secondary" onclick="app.closeModal('clinician-modal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Clinician</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Reference Range Modal (Add / Edit) -->
+  <div id="reference-range-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 500px;">
+      <h3 id="reference-range-modal-title" style="margin-top: 0; color: var(--primary-color);">Add Reference Range Rule</h3>
+      <form id="reference-range-modal-form" onsubmit="app.submitReferenceRangeModal(event)">
+        <input type="hidden" id="ref-range-modal-id">
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="ref-range-modal-param">Parameter / Test Name *</label>
+          <input type="text" id="ref-range-modal-param" list="ref-range-param-datalist" required placeholder="Type or select quantitative test..." style="width: 100%; padding: 8px;" oninput="app.handleRefRangeParamSelection(this.value)" onchange="app.handleRefRangeParamSelection(this.value)" autocomplete="off">
+          <datalist id="ref-range-param-datalist"></datalist>
+        </div>
+        <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+          <div class="form-group" style="flex: 1;">
+            <label for="ref-range-modal-age-min">Min Age (Years)</label>
+            <input type="number" id="ref-range-modal-age-min" value="0" min="0" max="150" style="width: 100%; padding: 8px;">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label for="ref-range-modal-age-max">Max Age (Years)</label>
+            <input type="number" id="ref-range-modal-age-max" value="999" min="0" max="999" style="width: 100%; padding: 8px;">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label for="ref-range-modal-sex">Sex</label>
+            <select id="ref-range-modal-sex" style="width: 100%; padding: 8px;">
+              <option value="">Any</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+        </div>
+        <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+          <div class="form-group" style="flex: 1;">
+            <label for="ref-range-modal-norm-min">Normal Min</label>
+            <input type="number" step="any" min="0" id="ref-range-modal-norm-min" placeholder="e.g. 12.0" style="width: 100%; padding: 8px;">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label for="ref-range-modal-norm-max">Normal Max</label>
+            <input type="number" step="any" min="0" id="ref-range-modal-norm-max" placeholder="e.g. 15.5" style="width: 100%; padding: 8px;">
+          </div>
+        </div>
+        <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+          <div class="form-group" style="flex: 1;">
+            <label for="ref-range-modal-crit-min">Critical Min (L*)</label>
+            <input type="number" step="any" min="0" id="ref-range-modal-crit-min" placeholder="e.g. 8.0" style="width: 100%; padding: 8px;">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label for="ref-range-modal-crit-max">Critical Max (H*)</label>
+            <input type="number" step="any" min="0" id="ref-range-modal-crit-max" placeholder="e.g. 20.0" style="width: 100%; padding: 8px;">
+          </div>
+        </div>
+        <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+          <div class="form-group" style="flex: 1;">
+            <label for="ref-range-modal-sanity-min">Sanity Min (Hard Floor)</label>
+            <input type="number" step="any" min="0" id="ref-range-modal-sanity-min" placeholder="e.g. 2.0" style="width: 100%; padding: 8px;">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label for="ref-range-modal-sanity-max">Sanity Max (Hard Ceiling)</label>
+            <input type="number" step="any" min="0" id="ref-range-modal-sanity-max" placeholder="e.g. 26.0" style="width: 100%; padding: 8px;">
+          </div>
+        </div>
+        <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+          <div class="form-group" style="flex: 1;">
+            <label for="ref-range-modal-plausible-min">Plausible Min</label>
+            <input type="number" step="any" min="0" id="ref-range-modal-plausible-min" placeholder="e.g. 5.0" style="width: 100%; padding: 8px;">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label for="ref-range-modal-plausible-max">Plausible Max</label>
+            <input type="number" step="any" min="0" id="ref-range-modal-plausible-max" placeholder="e.g. 22.0" style="width: 100%; padding: 8px;">
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="ref-range-modal-unit">Unit</label>
+          <div id="ref-range-modal-unit-container">
+            <input type="text" id="ref-range-modal-unit" list="ref-range-unit-datalist" placeholder="e.g. g/dL" style="width: 100%; padding: 8px;" onchange="app.handleRefRangeUnitChange(this.value)">
+            <datalist id="ref-range-unit-datalist"></datalist>
+          </div>
+          <div id="ref-range-modal-unit-hint" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 3px; display: none;"></div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" onclick="app.closeModal('reference-range-modal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Rule</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Visit Modal -->
+  <div id="edit-visit-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="width: 920px; max-width: 95vw; max-height: 90vh; padding: 28px 32px; display: flex; flex-direction: column; overflow: hidden;">
+      <h3 style="margin-top: 0; margin-bottom: 20px; color: var(--primary-color); font-size: 1.25rem;">Visit Details & Quality Verification</h3>
+      <form onsubmit="app.submitEditVisit(event)" style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
+        <input type="hidden" id="edit-visit-id">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+          <div class="form-group">
+            <label for="edit-visit-ward" style="font-weight: 600; margin-bottom: 6px; display: block;">Ward of Origin:</label>
+            <select id="edit-visit-ward" required style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid var(--border-color);"></select>
+          </div>
+          <div class="form-group">
+            <label for="edit-visit-clinician" style="font-weight: 600; margin-bottom: 6px; display: block;">Requesting Clinician:</label>
+            <select id="edit-visit-clinician" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid var(--border-color);">
+              <option value="">-- None --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="edit-visit-order-category" style="font-weight: 600; margin-bottom: 6px; display: block;">Test Category:</label>
+            <select id="edit-visit-order-category" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid var(--border-color);">
+              <option value="in-house">In-house</option>
+              <option value="referral">Referral</option>
+              <option value="outreach">Outreach</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="margin-top: 8px; border-top: 1px solid #e2e8f0; padding-top: 16px; flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h4 style="font-size: 1rem; color: var(--primary-color); margin: 0; font-weight: 600;">Ordered Tests & Results in this Visit</h4>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Results can be modified with a recorded reason</span>
+          </div>
+          <div id="edit-visit-orders-list" style="flex: 1; max-height: 340px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; padding: 12px; background: #fff;">
+            Loading tests...
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 12px; border-top: 1px solid #f1f5f9;">
+          <button type="button" class="btn btn-secondary" onclick="app.closeModal('edit-visit-modal')">Cancel</button>
+          <button type="submit" class="btn btn-primary" style="padding: 8px 24px;">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Client Modal -->
+  <div id="edit-client-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="width: 480px; max-width: 92vw; padding: 24px;">
+      <h3 style="margin-top: 0; margin-bottom: 16px; color: var(--primary-color);">Edit Client Details</h3>
+      <form onsubmit="app.submitEditClient(event)">
+        <input type="hidden" id="edit-client-id">
+        <input type="hidden" id="edit-client-number">
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="edit-client-name" style="font-weight: 600; display: block; margin-bottom: 4px;">Full Name:</label>
+          <input type="text" id="edit-client-name" required style="width: 100%; padding: 8px; box-sizing: border-box;">
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="edit-client-sex" style="font-weight: 600; display: block; margin-bottom: 4px;">Sex:</label>
+          <select id="edit-client-sex" required style="width: 100%; padding: 8px;">
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="edit-client-category" style="font-weight: 600; display: block; margin-bottom: 4px;">Age Category:</label>
+          <select id="edit-client-category" required onchange="app.updateEditAgePlaceholder()" style="width: 100%; padding: 8px;">
+            <option value="Adult">Adult (15+ years)</option>
+            <option value="Child">Child (4-14 years)</option>
+            <option value="Toddler">Toddler (1-3 years)</option>
+            <option value="Infant">Infant (1m - 1 year)</option>
+            <option value="Neonate">Neonate (0-28 days)</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="edit-client-age" style="font-weight: 600; display: block; margin-bottom: 4px;">Age (leave blank to keep existing):</label>
+          <input type="text" id="edit-client-age" placeholder="e.g. 25y, 6m, 14d" style="width: 100%; padding: 8px; box-sizing: border-box;">
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="edit-client-phone" style="font-weight: 600; display: block; margin-bottom: 4px;">Phone (Optional):</label>
+          <input type="text" id="edit-client-phone" style="width: 100%; padding: 8px; box-sizing: border-box;">
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" onclick="app.closeModal('edit-client-modal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Client Details</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Confirm Modal -->
+  <div id="confirm-modal" class="modal-overlay" style="display: none; z-index: 10001;">
+    <div class="modal-content" style="max-width: 400px; text-align: center;">
+      <h3 id="confirm-title" style="margin-top: 0; color: var(--primary-color);"></h3>
+      <p id="confirm-message" style="margin-bottom: 24px; color: var(--text-color);"></p>
+      <div style="display: flex; justify-content: center; gap: 12px;">
+        <button class="btn btn-secondary" id="confirm-cancel-btn" style="flex: 1;">Cancel</button>
+        <button class="btn btn-primary" id="confirm-ok-btn" style="flex: 1;">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Prompt Modal -->
+  <div id="prompt-modal" class="modal-overlay" style="display: none; z-index: 10002;">
+    <div class="modal-content" style="max-width: 400px; text-align: center;">
+      <h3 id="prompt-title" style="margin-top: 0; color: var(--primary-color);"></h3>
+      <p id="prompt-message" style="margin-bottom: 16px; color: var(--text-color);"></p>
+      <input type="text" id="prompt-input" style="width: 100%; padding: 8px; margin-bottom: 24px;">
+      <div style="display: flex; justify-content: center; gap: 12px;">
+        <button class="btn btn-secondary" id="prompt-cancel-btn" style="flex: 1;">Cancel</button>
+        <button class="btn btn-primary" id="prompt-ok-btn" style="flex: 1;">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bulk Export Modal -->
+  <div id="bulk-export-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 520px; width: 92vw;">
+      <h3 style="margin-top: 0; color: var(--primary-color);">Bulk Data Export</h3>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: -8px; margin-bottom: 16px;">Select dataset and filters for offline streaming export.</p>
+      <form onsubmit="app.submitBulkExport(event)">
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="export-dataset" style="font-weight: 600; display: block; margin-bottom: 4px;">Dataset to Export:</label>
+          <select id="export-dataset" onchange="app.onExportDatasetChange()" style="width: 100%; padding: 8px;">
+            <option value="clients">Client Demographics Registry</option>
+            <option value="results">Comprehensive Diagnostic Results Ledger</option>
+          </select>
+        </div>
+        <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+          <div class="form-group" style="flex: 1;">
+            <label for="export-start-date" style="font-weight: 600; display: block; margin-bottom: 4px;">Start Date:</label>
+            <input type="date" id="export-start-date" style="width: 100%; padding: 8px;">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label for="export-end-date" style="font-weight: 600; display: block; margin-bottom: 4px;">End Date:</label>
+            <input type="date" id="export-end-date" style="width: 100%; padding: 8px;">
+          </div>
+        </div>
+        <div id="export-results-filters" style="display: none;">
+          <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+            <div class="form-group" style="flex: 1;">
+              <label for="export-ward" style="font-weight: 600; display: block; margin-bottom: 4px;">Ward Filter:</label>
+              <select id="export-ward" style="width: 100%; padding: 8px;">
+                <option value="">All Wards / OPD</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label for="export-section" style="font-weight: 600; display: block; margin-bottom: 4px;">Section Filter:</label>
+              <select id="export-section" style="width: 100%; padding: 8px;">
+                <option value="">All Sections</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="export-format" style="font-weight: 600; display: block; margin-bottom: 4px;">Export Format:</label>
+          <select id="export-format" style="width: 100%; padding: 8px;">
+            <option value="xlsx">Excel Workbook (.xlsx)</option>
+            <option value="csv">CSV (Comma Separated Values - .csv)</option>
+            <option value="json">JSON (JavaScript Object Notation - .json)</option>
+          </select>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" onclick="app.closeBulkExportModal()">Cancel</button>
+          <button type="submit" id="export-submit-btn" class="btn btn-primary">Export and Download Data</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Bulk Import Modal -->
+  <div id="bulk-import-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 520px; width: 92vw;">
+      <h3 style="margin-top: 0; color: var(--primary-color);">Bulk Data Import</h3>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: -8px; margin-bottom: 16px;">Upload previously exported Excel, CSV or JSON dataset to restore or bulk insert data.</p>
+      <form onsubmit="app.submitBulkImport(event)">
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label for="import-dataset" style="font-weight: 600; display: block; margin-bottom: 4px;">Target Dataset:</label>
+          <select id="import-dataset" style="width: 100%; padding: 8px;">
+            <option value="clients">Client Demographics Registry</option>
+            <option value="results">Comprehensive Diagnostic Results Ledger</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label style="font-weight: 600; display: block; margin-bottom: 4px;">Select File (.xlsx, .csv or .json):</label>
+          <div id="import-dropzone" 
+               onclick="document.getElementById('import-file').click()" 
+               ondragover="app.onImportDragOver(event)" 
+               ondragleave="app.onImportDragLeave(event)" 
+               ondrop="app.onImportDrop(event)"
+               style="border: 2px dashed var(--border-color); border-radius: 8px; padding: 20px; text-align: center; background: #F8FAFC; cursor: pointer; transition: all 0.2s;">
+            <svg class="lucide" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" x2="12" y1="3" y2="15"></line></svg>
+            <div id="import-dropzone-text" style="font-size: 0.9rem; font-weight: 600; color: var(--primary-color);">Click or Drag & Drop .XLSX, .CSV, or .JSON File Here</div>
+            <div id="import-file-details" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">Supports standard M-LIS exported records (.xlsx, .csv, .json)</div>
+          </div>
+          <input type="file" id="import-file" accept=".xlsx, .csv, .json, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, text/csv, application/json" onchange="app.onImportFileSelected(this)" style="display: none;">
+        </div>
+        <div class="form-group" style="margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+          <input type="checkbox" id="import-dry-run" style="width: 16px; height: 16px;">
+          <label for="import-dry-run" style="font-size: 0.9rem; color: var(--text-color); cursor: pointer;">Dry Run (Validate file and preview counts without saving)</label>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" onclick="app.closeBulkImportModal()">Cancel</button>
+          <button type="submit" id="import-submit-btn" class="btn btn-primary">Import Data</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Keyboard Shortcuts Help Modal -->
+  <div id="shortcuts-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 680px; width: 94vw; max-height: 90vh;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+        <h3 style="margin: 0; color: var(--primary-color); display: flex; align-items: center; gap: 8px;">
+          <svg class="lucide" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2" ry="2"></rect><line x1="6" x2="6.01" y1="8" y2="8"></line><line x1="10" x2="10.01" y1="8" y2="8"></line><line x1="14" x2="14.01" y1="8" y2="8"></line><line x1="18" x2="18.01" y1="8" y2="8"></line><line x1="6" x2="6.01" y1="12" y2="12"></line><line x1="10" x2="10.01" y1="12" y2="12"></line><line x1="14" x2="14.01" y1="12" y2="12"></line><line x1="18" x2="18.01" y1="12" y2="12"></line><line x1="8" x2="16" y1="16" y2="16"></line></svg>
+          Keyboard Shortcuts &amp; Fast Navigation
+        </h3>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="app.closeModal('shortcuts-modal')">Close</button>
+      </div>
+      <div class="shortcuts-grid">
+        <div class="shortcut-group">
+          <h4>Global Navigation</h4>
+          <div class="shortcut-row"><span class="shortcut-label">Lab Reports</span><span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>1</kbd></span></div>
+          <div class="shortcut-row"><span class="shortcut-label">Daily Log</span><span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>2</kbd></span></div>
+          <div class="shortcut-row"><span class="shortcut-label">Backlog</span><span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>3</kbd></span></div>
+          <div class="shortcut-row"><span class="shortcut-label">Inventory</span><span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>4</kbd></span></div>
+          <div class="shortcut-row"><span class="shortcut-label">Performance</span><span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>5</kbd></span></div>
+          <div class="shortcut-row"><span class="shortcut-label">Configuration</span><span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>6</kbd></span></div>
+          <div class="shortcut-row"><span class="shortcut-label">Audit Log</span><span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>7</kbd></span></div>
+          <div class="shortcut-row"><span class="shortcut-label">Help / Shortcuts</span><span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>H</kbd> or <kbd>?</kbd> / <kbd>F1</kbd></span></div>
+          <div class="shortcut-row"><span class="shortcut-label">Logout</span><span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>L</kbd></span></div>
+        </div>
+        <div class="shortcut-group">
+          <h4>Lab Reports &amp; Visits</h4>
+          <div class="shortcut-row"><span class="shortcut-label">Focus Client Search</span><span class="shortcut-keys"><kbd>/</kbd> or <kbd>Ctrl</kbd> + <kbd>K</kbd></span></div>
+          <div class="shortcut-row"><span class="shortcut-label">Browse Clients</span><span class="shortcut-keys"><kbd>&darr;</kbd> / <kbd>&uarr;</kbd> or <kbd>J</kbd> / <kbd>K</kbd></span></div>
+          <div class="shortcut-row"><span class="shortcut-label">Select Client</span><span class="shortcut-keys"><kbd>Enter</kbd> or <kbd>Space</kbd></span></div>
+          <div class="shortcut-row"><span class="shortcut-label">Register Client</span><span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>N</kbd> or <kbd>N</kbd></span></div>
+          <div class="shortcut-row"><span class="shortcut-label">Search Test Catalog</span><span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>T</kbd></span></div>
+          <div class="shortcut-row"><span class="shortcut-label">Toggle Test Checkbox</span><span class="shortcut-keys"><kbd>Space</kbd> / <kbd>Enter</kbd></span></div>
+          <div class="shortcut-row"><span class="shortcut-label">Create Visit &amp; Orders</span><span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>Enter</kbd></span></div>
+          <div class="shortcut-row"><span class="shortcut-label">Bulk Export / Import</span><span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>E</kbd> / <kbd>Alt</kbd> + <kbd>I</kbd></span></div>
+        </div>
+        <div class="shortcut-group">
+          <h4>Result Entry Modal</h4>
+          <div class="shortcut-row"><span class="shortcut-label">Next Parameter Field</span><span class="shortcut-keys"><kbd>Enter</kbd></span></div>
+          <div class="shortcut-row"><span class="shortcut-label">Previous / Next Row</span><span class="shortcut-keys"><kbd>&uarr;</kbd> / <kbd>&darr;</kbd></span></div>
+          <div class="shortcut-row"><span class="shortcut-label">Save &amp; Finalize Result</span><span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>Enter</kbd></span></div>
+          <div class="shortcut-row"><span class="shortcut-label">Cancel &amp; Close</span><span class="shortcut-keys"><kbd>Esc</kbd></span></div>
+        </div>
+        <div class="shortcut-group">
+          <h4>Backlog &amp; Daily Log</h4>
+          <div class="shortcut-row"><span class="shortcut-label">2D Cell Navigation</span><span class="shortcut-keys"><kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&rarr;</kbd> <kbd>&darr;</kbd></span></div>
+          <div class="shortcut-row"><span class="shortcut-label">Save Backlog Register</span><span class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>S</kbd></span></div>
+          <div class="shortcut-row"><span class="shortcut-label">Daily Log Prev / Next</span><span class="shortcut-keys"><kbd>[</kbd> / <kbd>]</kbd></span></div>
+          <div class="shortcut-row"><span class="shortcut-label">Daily Log Today</span><span class="shortcut-keys"><kbd>T</kbd></span></div>
+          <div class="shortcut-row"><span class="shortcut-label">Focus Shift Audit Tally</span><span class="shortcut-keys"><kbd>Alt</kbd> + <kbd>A</kbd></span></div>
+          <div class="shortcut-row"><span class="shortcut-label">Close Active Modal</span><span class="shortcut-keys"><kbd>Esc</kbd></span></div>
+        </div>
+      </div>
+      <div style="text-align: right; margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+        <button type="button" class="btn btn-primary" onclick="app.closeModal('shortcuts-modal')">Got it</button>
+      </div>
+    </div>
+  </div>
+
+    <!-- Modular scripts -->
+  <script src="/static/js/core/polyfills.js?v=7"></script>
+  <script src="/static/js/core/icons.js?v=7"></script>
+  <script src="/static/js/core/state.js?v=7"></script>
+  <script src="/static/js/core/shortcuts.js?v=7"></script>
+  <script src="/static/js/modules/clients.js?v=7"></script>
+  <script src="/static/js/modules/results.js?v=7"></script>
+  <script src="/static/js/modules/daily_log.js?v=7"></script>
+  <script src="/static/js/modules/backlog.js?v=7"></script>
+  <script src="/static/js/modules/inventory.js?v=7"></script>
+  <script src="/static/js/modules/reports.js?v=7"></script>
+  <script src="/static/js/modules/config.js?v=7"></script>
+  <script src="/static/js/main.js?v=7"></script>
+</body>
+</html>
