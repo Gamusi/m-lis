@@ -560,7 +560,9 @@ def init_db():
         )
     """)
     cursor.execute("UPDATE wards SET name = UPPER(TRIM(name)) WHERE name IS NOT NULL AND name != UPPER(TRIM(name))")
+    cursor.execute("UPDATE wards SET name = 'PAEDIATRIC' WHERE name IN ('PEDIATRICS', 'PAEDIATRICS', 'PEDIATRIC')")
     cursor.execute("UPDATE visits SET ward_of_origin = UPPER(TRIM(ward_of_origin)) WHERE ward_of_origin IS NOT NULL AND ward_of_origin != UPPER(TRIM(ward_of_origin))")
+    cursor.execute("UPDATE visits SET ward_of_origin = 'PAEDIATRIC' WHERE ward_of_origin IN ('PEDIATRICS', 'PAEDIATRICS', 'PEDIATRIC')")
     conn.commit()
 
 
@@ -615,15 +617,15 @@ def init_db():
     URINALYSIS_PARAMS = [
         ("Color", None, None, 1, '["Straw", "Yellow", "Amber", "Red", "Brown"]'),
         ("Turbidity", None, None, 2, '["Clear", "Slightly Turbid", "Turbid"]'),
-        ("Pus Cells (WBCs)", None, "<5 / lpf", 3, '["Not Seen", "1-2 / lpf", "3-4 / lpf", "5-10 / lpf", "10-15 / lpf", ">15 / lpf"]'),
-        ("Red Blood Cells (RBCs)", None, "<3 / lpf", 4, '["Not Seen", "1-2 / lpf", "3-5 / lpf", "5-10 / lpf", ">10 / lpf"]'),
-        ("Epithelial Cells", None, "Few", 5, '["Not Seen", "Few", "Moderate", "Plenty"]'),
-        ("Casts", None, "Not Seen", 6, '["Not Seen", "Hyaline Casts (0-1 / lpf)", "Granular Casts", "Waxy Casts", "RBC Casts", "WBC Casts"]'),
-        ("Crystals", None, "Not Seen", 7, '["Not Seen", "Calcium Oxalate (++)", "Triple Phosphate (++)", "Uric Acid Crystals"]'),
+        ("Pus Cells (WBCs)", "/ lpf", "<5 / lpf", 3, '["Not Seen", "1-2 / lpf", "3-4 / lpf", "5-10 / lpf", "10-15 / lpf", ">15 / lpf"]'),
+        ("Red Blood Cells (RBCs)", "/ lpf", "<3 / lpf", 4, '["Not Seen", "1-2 / lpf", "3-5 / lpf", "5-10 / lpf", ">10 / lpf"]'),
+        ("Epithelial Cells", "/ lpf", "Few (1-4 / lpf)", 5, '["Not Seen", "Few (1-4 / lpf)", "Moderate (5-10 / lpf)", "Plenty (>10 / lpf)"]'),
+        ("Casts", "/ lpf", "Not Seen", 6, '["Not Seen", "Hyaline Casts (0-1 / lpf)", "Granular Casts (1-2 / lpf)", "Cellular Casts (1-2 / lpf)", "Waxy Casts (1-2 / lpf)", "RBC Casts (1-2 / lpf)", "WBC Casts (1-2 / lpf)"]'),
+        ("Crystals", None, "Not Seen", 7, '["Not Seen", "Calcium Oxalate (+)", "Calcium Oxalate (++)", "Triple Phosphate (+)", "Triple Phosphate (++)", "Uric Acid Crystals (+)", "Amorphous Urates/Phosphates"]'),
         ("Specific Gravity (S.G)", "Ratio", "1.005 - 1.030", 8, '["1.000", "1.005", "1.010", "1.015", "1.020", "1.025", "1.030"]'),
         ("PH", "pH", "5.0 - 8.5", 9, '["5.0", "6.0", "6.5", "7.0", "7.5", "8.0", "8.5"]'),
-        ("Proteins", None, "Nil", 10, '["Nil", "Trace (15 mg/dL)", "1+ (30 mg/dL)", "2+ (100 mg/dL)", "3+ (300 mg/dL)", "4+ (\u22652000 mg/dL)"]'),
-        ("Glucose", None, "Nil", 11, '["Nil", "Trace (100 mg/dL)", "1+ (250 mg/dL)", "2+ (500 mg/dL)", "3+ (1000 mg/dL)", "4+ (\u22652000 mg/dL)"]'),
+        ("Proteins", None, "Nil", 10, '["Nil", "Trace (15 mg/dL)", "1+ (30 mg/dL)", "2+ (100 mg/dL)", "3+ (300 mg/dL)", "4+ (≥2000 mg/dL)"]'),
+        ("Glucose", None, "Nil", 11, '["Nil", "Trace (100 mg/dL)", "1+ (250 mg/dL)", "2+ (500 mg/dL)", "3+ (1000 mg/dL)", "4+ (≥2000 mg/dL)"]'),
         ("Bilirubin", None, "Nil", 12, '["Nil", "Small (+)", "Moderate (++)", "Large (+++)"]'),
         ("Urobilinogen", None, "Normal", 13, '["Normal (1.0 EU/dL)", "2.0 EU/dL", "4.0 EU/dL", "8.0 EU/dL"]'),
         ("Ketones", None, "Nil", 14, '["Nil", "Trace (5 mg/dL)", "1+ (15 mg/dL)", "2+ (40 mg/dL)", "3+ (80 mg/dL)", "4+ (160 mg/dL)"]'),

@@ -162,3 +162,70 @@ def test_blood_group_discordance_in_enter_result(mock_db):
     assert cbg_row["result_value"] == "Grouping Discrepancy"
     assert cbg_row["clinical_flag"] == "\u26A0"
 
+def test_blood_group_forward_only_in_enter_result(mock_db):
+    cur = mock_db["conn"].cursor()
+    cur.execute("SELECT id, parameter_name FROM test_parameters WHERE test_id = (SELECT test_id FROM test_orders WHERE id = ?)", (mock_db["bg_order_id"],))
+    params = {r["parameter_name"]: r["id"] for r in cur.fetchall()}
+
+    # Enter forward-only typing: Anti-A+, Anti-B-, Anti-D+ (A Pos). Reverse typing omitted.
+    param_results = [
+        {"parameter_id": params["Forward Anti-A"], "result_value": "Agglutination (+)"},
+        {"parameter_id": params["Forward Anti-B"], "result_value": "No Agglutination (-)"},
+        {"parameter_id": params["Forward Anti-D"], "result_value": "Agglutination (+)"},
+    ]
+    res = client.post("/api/clients/results", json={
+        "order_id": mock_db["bg_order_id"],
+        "parameter_results": param_results
+    })
+    assert res.status_code == 200
+
+    # Verify that Consolidated Blood Group is correctly derived as 'A Rh(D) Positive' with no discrepancy flag
+    cur.execute("SELECT result_value, clinical_flag FROM test_results WHERE order_id = ? AND parameter_id = ?", (mock_db["bg_order_id"], params["Consolidated Blood Group"]))
+    cbg_row = cur.fetchone()
+    assert cbg_row["result_value"] == "A Rh(D) Positive"
+    assert cbg_row["clinical_flag"] == ""
+
+    # Verify parent order summary result
+    cur.execute("SELECT result_value, clinical_flag FROM test_results WHERE order_id = ? AND parameter_id IS NULL", (mock_db["bg_order_id"],))
+    p_row = cur.fetchone()
+    assert p_row["result_value"] == "A Rh(D) Positive"
+    assert p_row["clinical_flag"] == ""
+
+def test_blood_group_enter_result_lab_number_collision_prevention(mock_db):
+    conn = mock_db["conn"]
+    cur = conn.cursor()
+    cur.execute("SELECT test_id FROM test_orders WHERE id = ?", (mock_db["bg_order_id"],))
+    test_id = cur.fetchone()["test_id"]
+    
+    cur.execute("INSERT INTO visits (client_id, ward_of_origin) VALUES (1, 'OPD')")
+    v_id = cur.lastrowid
+    cur.execute("INSERT INTO test_orders (visit_id, test_id, status) VALUES (?, ?, 'pending')", (v_id, test_id))
+    ord_id = cur.lastrowid
+
+    today = datetime.date.today()
+    seq_name = f"lab_number_{today.strftime('%y')}_{today.month}"
+    prefix = f"AMH-{today.strftime('%y')}-{today.month}-"
+    for i in range(1, 6):
+        cur.execute("INSERT OR IGNORE INTO visits (client_id, lab_number) VALUES (1, ?)", (f"{prefix}{i:03d}",))
+    cur.execute("INSERT OR REPLACE INTO sequence_tracker (seq_name, last_value) VALUES (?, 0)", (seq_name,))
+    conn.commit()
+
+    cur.execute("SELECT id, parameter_name FROM test_parameters WHERE test_id = ?", (test_id,))
+    params = {r["parameter_name"]: r["id"] for r in cur.fetchall()}
+
+    param_results = [
+        {"parameter_id": params["Forward Anti-A"], "result_value": "Agglutination (+)"},
+        {"parameter_id": params["Forward Anti-B"], "result_value": "No Agglutination (-)"},
+        {"parameter_id": params["Forward Anti-D"], "result_value": "Agglutination (+)"},
+    ]
+    res = client.post("/api/clients/results", json={
+        "order_id": ord_id,
+        "parameter_results": param_results
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "result_saved"
+    cur.execute("SELECT lab_number FROM visits WHERE id = ?", (v_id,))
+    v_row = cur.fetchone()
+    assert v_row["lab_number"] == f"{prefix}006"
+

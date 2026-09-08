@@ -31,6 +31,33 @@ def test_blood_group_concordance_a_neg():
     assert res["is_concordant"] is True
     assert res["consolidated_group"] == "A Rh(D) Negative"
 
+def test_blood_group_forward_only_omitted():
+    # Reverse typing omitted completely (None)
+    res = evaluate_blood_group(
+        anti_a="Agglutination (+)",
+        anti_b="No Agglutination (-)",
+        anti_d="Agglutination (+)",
+        a1_cells=None,
+        b_cells=None
+    )
+    assert res["is_concordant"] is True
+    assert res["consolidated_group"] == "A Rh(D) Positive"
+    assert res["discrepancy_reason"] is None
+    assert res["reverse_abo"] is None
+
+def test_blood_group_forward_only_not_done():
+    # Reverse typing marked 'Not Done'
+    res = evaluate_blood_group(
+        anti_a="No Agglutination (-)",
+        anti_b="Agglutination (+)",
+        anti_d="No Agglutination (-)",
+        a1_cells="Not Done",
+        b_cells="Not Done (Optional)"
+    )
+    assert res["is_concordant"] is True
+    assert res["consolidated_group"] == "B Rh(D) Negative"
+    assert res["discrepancy_reason"] is None
+
 def test_blood_group_discordance():
     # Forward A, Reverse O
     res = evaluate_blood_group(

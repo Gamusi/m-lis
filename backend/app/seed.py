@@ -114,7 +114,8 @@ PANELS = {
         'Total Protein', 'Serum Albumin', 'Gamma-Glutamyl Transferase (GGT)', 'Total Cholesterol'
     ],
     'RFTS': [
-        'Serum Urea', 'Serum Creatinine', 'Serum Uric Acid'
+        'Serum Urea', 'Serum Creatinine', 'Serum Potassium (K+)', 'Serum Sodium (Na+)',
+        'Serum Chloride (Cl-)', 'Serum Uric Acid'
     ],
     'CARDIAC': [
         'Total CK (Creatine Kinase)', 'CK-MB (Creatine Kinase-MB)', 'Troponin I (cTnI)',
@@ -227,7 +228,12 @@ TESTS = [
     {'name': 'Total Cholesterol', 'section': 'Clinical Biochemistry', 'is_tracked': 0, 'result_type': 'quantitative', 'default_unit': 'mmol/L', 'secondary_unit': 'mg/dL', 'ref_range': '< 5.2 mmol/L (< 200 mg/dL)', 'options': None, 'parent_name': 'LFTS', 'sort_order': 9},
     {'name': 'Serum Urea', 'section': 'Clinical Biochemistry', 'is_tracked': 0, 'result_type': 'quantitative', 'default_unit': 'mmol/L', 'secondary_unit': 'mg/dL', 'ref_range': '2.5 - 6.7 mmol/L (15 - 40 mg/dL)', 'options': None, 'parent_name': 'RFTS', 'sort_order': 1},
     {'name': 'Serum Creatinine', 'section': 'Clinical Biochemistry', 'is_tracked': 0, 'result_type': 'quantitative', 'default_unit': 'µmol/L', 'secondary_unit': 'mg/dL', 'ref_range': 'Male: 62-106, Female: 44-80 µmol/L', 'options': None, 'parent_name': 'RFTS', 'sort_order': 2},
-    {'name': 'Serum Uric Acid', 'section': 'Clinical Biochemistry', 'is_tracked': 0, 'result_type': 'quantitative', 'default_unit': 'µmol/L', 'secondary_unit': 'mg/dL', 'ref_range': 'Male: 200-420, Female: 140-340 µmol/L', 'options': None, 'parent_name': 'RFTS', 'sort_order': 3},
+    {'name': 'Serum Potassium (K+)', 'section': 'Clinical Biochemistry', 'is_tracked': 0, 'result_type': 'quantitative', 'default_unit': 'mmol/L', 'secondary_unit': 'mEq/L', 'ref_range': '3.5 - 5.1 mmol/L', 'options': None, 'parent_name': 'RFTS', 'sort_order': 3},
+    {'name': 'Serum Sodium (Na+)', 'section': 'Clinical Biochemistry', 'is_tracked': 0, 'result_type': 'quantitative', 'default_unit': 'mmol/L', 'secondary_unit': 'mEq/L', 'ref_range': '136.0 - 145.0 mmol/L', 'options': None, 'parent_name': 'RFTS', 'sort_order': 4},
+    {'name': 'Serum Chloride (Cl-)', 'section': 'Clinical Biochemistry', 'is_tracked': 0, 'result_type': 'quantitative', 'default_unit': 'mmol/L', 'secondary_unit': 'mEq/L', 'ref_range': '98.0 - 107.0 mmol/L', 'options': None, 'parent_name': 'RFTS', 'sort_order': 5},
+    {'name': 'Serum Uric Acid', 'section': 'Clinical Biochemistry', 'is_tracked': 0, 'result_type': 'quantitative', 'default_unit': 'µmol/L', 'secondary_unit': 'mg/dL', 'ref_range': 'Male: 200-420, Female: 140-340 µmol/L', 'options': None, 'parent_name': 'RFTS', 'sort_order': 6},
+    {'name': 'Serum Uric Acid', 'section': 'Clinical Biochemistry', 'is_tracked': 0, 'result_type': 'quantitative', 'default_unit': 'µmol/L', 'secondary_unit': 'mg/dL', 'ref_range': 'Male: 200-420, Female: 140-340 µmol/L', 'options': None, 'parent_name': None, 'sort_order': 0, 'clinical_comments': 'Evaluates purine metabolism and uric acid clearance. Used for gout and pre-eclampsia monitoring.'},
+
     {'name': 'Total CK (Creatine Kinase)', 'section': 'Clinical Biochemistry', 'is_tracked': 0, 'result_type': 'quantitative', 'default_unit': 'U/L', 'secondary_unit': 'µkat/L', 'ref_range': 'Male: 39-308, Female: 26-140 U/L', 'options': None, 'parent_name': 'CARDIAC', 'sort_order': 1},
     {'name': 'CK-MB (Creatine Kinase-MB)', 'section': 'Clinical Biochemistry', 'is_tracked': 0, 'result_type': 'quantitative', 'default_unit': 'U/L', 'secondary_unit': 'µkat/L', 'ref_range': '7.0 - 25.0 U/L', 'options': None, 'parent_name': 'CARDIAC', 'sort_order': 2},
     {'name': 'Troponin I (cTnI)', 'section': 'Clinical Biochemistry', 'is_tracked': 0, 'result_type': 'quantitative', 'default_unit': 'ng/mL', 'secondary_unit': 'µg/L', 'ref_range': '< 0.1 ng/mL (< 0.1 µg/L)', 'options': None, 'parent_name': 'CARDIAC', 'sort_order': 3},
@@ -251,11 +257,11 @@ TESTS = [
     {'name': 'Color', 'section': 'Urinalysis Profile', 'is_tracked': 0, 'result_type': 'options', 'default_unit': None, 'secondary_unit': None, 'ref_range': None, 'options': ['Straw', 'Yellow', 'Amber', 'Red', 'Brown'], 'parent_name': 'URINALYSIS', 'sort_order': 1},
     {'name': 'Turbidity', 'section': 'Urinalysis Profile', 'is_tracked': 0, 'result_type': 'options', 'default_unit': None, 'secondary_unit': None, 'ref_range': None, 'options': ['Clear', 'Slightly Turbid', 'Turbid'], 'parent_name': 'URINALYSIS', 'sort_order': 2},
     # --- URINALYSIS: Microscopy / Sediment Cytology (sort_order 3-7) — all lpf ---
-    {'name': 'Pus Cells (WBCs)', 'section': 'Urinalysis Profile', 'is_tracked': 0, 'result_type': 'options', 'default_unit': None, 'secondary_unit': None, 'ref_range': None, 'options': ['Not Seen', '1-2 / lpf', '3-4 / lpf', '5-10 / lpf', '10-15 / lpf', '>15 / lpf'], 'parent_name': 'URINALYSIS', 'sort_order': 3},
-    {'name': 'Red Blood Cells (RBCs)', 'section': 'Urinalysis Profile', 'is_tracked': 0, 'result_type': 'options', 'default_unit': None, 'secondary_unit': None, 'ref_range': None, 'options': ['Not Seen', '1-2 / lpf', '3-5 / lpf', '5-10 / lpf', '>10 / lpf'], 'parent_name': 'URINALYSIS', 'sort_order': 4},
-    {'name': 'Epithelial Cells', 'section': 'Urinalysis Profile', 'is_tracked': 0, 'result_type': 'options', 'default_unit': None, 'secondary_unit': None, 'ref_range': None, 'options': ['Not Seen', 'Few', 'Moderate', 'Plenty'], 'parent_name': 'URINALYSIS', 'sort_order': 5},
-    {'name': 'Casts', 'section': 'Urinalysis Profile', 'is_tracked': 0, 'result_type': 'options', 'default_unit': None, 'secondary_unit': None, 'ref_range': None, 'options': ['Not Seen', 'Hyaline Casts (0-1 / lpf)', 'Granular Casts', 'Waxy Casts', 'RBC Casts', 'WBC Casts'], 'parent_name': 'URINALYSIS', 'sort_order': 6},
-    {'name': 'Crystals', 'section': 'Urinalysis Profile', 'is_tracked': 0, 'result_type': 'options', 'default_unit': None, 'secondary_unit': None, 'ref_range': None, 'options': ['Not Seen', 'Calcium Oxalate (++)', 'Triple Phosphate (++)', 'Uric Acid Crystals'], 'parent_name': 'URINALYSIS', 'sort_order': 7},
+    {'name': 'Pus Cells (WBCs)', 'section': 'Urinalysis Profile', 'is_tracked': 0, 'result_type': 'options', 'default_unit': '/ lpf', 'secondary_unit': None, 'ref_range': '<5 / lpf', 'options': ['Not Seen', '1-2 / lpf', '3-4 / lpf', '5-10 / lpf', '10-15 / lpf', '>15 / lpf'], 'parent_name': 'URINALYSIS', 'sort_order': 3},
+    {'name': 'Red Blood Cells (RBCs)', 'section': 'Urinalysis Profile', 'is_tracked': 0, 'result_type': 'options', 'default_unit': '/ lpf', 'secondary_unit': None, 'ref_range': '<3 / lpf', 'options': ['Not Seen', '1-2 / lpf', '3-5 / lpf', '5-10 / lpf', '>10 / lpf'], 'parent_name': 'URINALYSIS', 'sort_order': 4},
+    {'name': 'Epithelial Cells', 'section': 'Urinalysis Profile', 'is_tracked': 0, 'result_type': 'options', 'default_unit': '/ lpf', 'secondary_unit': None, 'ref_range': 'Few (1-4 / lpf)', 'options': ['Not Seen', 'Few (1-4 / lpf)', 'Moderate (5-10 / lpf)', 'Plenty (>10 / lpf)'], 'parent_name': 'URINALYSIS', 'sort_order': 5},
+    {'name': 'Casts', 'section': 'Urinalysis Profile', 'is_tracked': 0, 'result_type': 'options', 'default_unit': '/ lpf', 'secondary_unit': None, 'ref_range': 'Not Seen', 'options': ['Not Seen', 'Hyaline Casts (0-1 / lpf)', 'Granular Casts (1-2 / lpf)', 'Cellular Casts (1-2 / lpf)', 'Waxy Casts (1-2 / lpf)', 'RBC Casts (1-2 / lpf)', 'WBC Casts (1-2 / lpf)'], 'parent_name': 'URINALYSIS', 'sort_order': 6},
+    {'name': 'Crystals', 'section': 'Urinalysis Profile', 'is_tracked': 0, 'result_type': 'options', 'default_unit': None, 'secondary_unit': None, 'ref_range': 'Not Seen', 'options': ['Not Seen', 'Calcium Oxalate (+)', 'Calcium Oxalate (++)', 'Triple Phosphate (+)', 'Triple Phosphate (++)', 'Uric Acid Crystals (+)', 'Amorphous Urates/Phosphates'], 'parent_name': 'URINALYSIS', 'sort_order': 7},
     # --- URINALYSIS: Dry Chemistry Dipstick — Siemens Multistix (sort_order 8-17) ---
     {'name': 'Specific Gravity (S.G)', 'section': 'Urinalysis Profile', 'is_tracked': 0, 'result_type': 'options', 'default_unit': None, 'secondary_unit': None, 'ref_range': None, 'options': ['1.000', '1.005', '1.010', '1.015', '1.020', '1.025', '1.030'], 'parent_name': 'URINALYSIS', 'sort_order': 8},
     {'name': 'PH', 'section': 'Urinalysis Profile', 'is_tracked': 0, 'result_type': 'options', 'default_unit': None, 'secondary_unit': None, 'ref_range': None, 'options': ['5.0', '6.0', '6.5', '7.0', '7.5', '8.0', '8.5'], 'parent_name': 'URINALYSIS', 'sort_order': 9},
@@ -425,6 +431,20 @@ DEFAULT_REFERENCE_RANGES = [
     ("Absolute CD4 Count (Cytometry)", 5, 999, None, 500.0, 1500.0, 200.0, None, 0.0, 5000.0, 10.0, 3000.0, "cells/µL"),
     ("CD4 COUNT", 5, 999, None, 500.0, 1500.0, 200.0, None, 0.0, 5000.0, 10.0, 3000.0, "cells/µL"),
     ("CD4 Percentage", 0, 4, None, 25.0, 65.0, 25.0, None, 0.0, 100.0, 5.0, 65.0, "%"),
+
+    # Non-CBC Hematology & Coagulation
+    ("E.S.R (Erythrocyte Sedimentation Rate)", 0, 50, "Male", 0.0, 15.0, None, None, 0.0, 150.0, 0.0, 140.0, "mm/hour"),
+    ("E.S.R (Erythrocyte Sedimentation Rate)", 51, 999, "Male", 0.0, 20.0, None, None, 0.0, 150.0, 0.0, 140.0, "mm/hour"),
+    ("E.S.R (Erythrocyte Sedimentation Rate)", 0, 50, "Female", 0.0, 20.0, None, None, 0.0, 150.0, 0.0, 140.0, "mm/hour"),
+    ("E.S.R (Erythrocyte Sedimentation Rate)", 51, 999, "Female", 0.0, 30.0, None, None, 0.0, 150.0, 0.0, 140.0, "mm/hour"),
+    ("E.S.R (Erythrocyte Sedimentation Rate)", 0, 11, None, 3.0, 13.0, None, None, 0.0, 150.0, 0.0, 140.0, "mm/hour"),
+
+    ("Prothrombin Time (PT)", 0, 999, None, 11.0, 13.5, None, 30.0, 5.0, 120.0, 9.0, 60.0, "Seconds"),
+    ("International Normalized Ratio (INR)", 0, 999, None, 0.8, 1.2, 0.5, 4.5, 0.2, 15.0, 0.5, 8.0, "Calculated ratio"),
+    ("Aptt (Activated Partial Thromboplastin Time)", 0, 999, None, 25.0, 35.0, None, 70.0, 10.0, 180.0, 20.0, 100.0, "Seconds"),
+    ("Bleeding Time (BT)", 0, 999, None, 2.0, 7.0, None, 15.0, 0.5, 30.0, 1.0, 20.0, "Minutes"),
+    ("Clotting Time (CT)", 0, 999, None, 4.0, 10.0, None, 20.0, 1.0, 45.0, 2.0, 25.0, "Minutes"),
+    ("Reticulocyte Count", 0, 999, None, 0.5, 2.5, None, None, 0.0, 30.0, 0.1, 20.0, "%"),
 ]
 
 def seed_reference_ranges(cur):
@@ -484,7 +504,7 @@ def seed_database(conn=None):
     cur = conn.cursor()
 
     # Wards
-    wards = ["ANC", "MCH", "Emergency", "Theater", "Labour", "OPD", "IPD", "Pediatrics", "TB Clinic"]
+    wards = ["ANC", "MCH", "Emergency", "Theater", "Labour", "OPD", "IPD", "PAEDIATRIC", "TB Clinic"]
     for w_name in wards:
         cur.execute("INSERT OR IGNORE INTO wards (name) VALUES (?)", (w_name,))
 
@@ -595,7 +615,7 @@ def seed_database(conn=None):
             sec_id = list(sec_map.values())[0]
         opts = json.dumps(t["options"]) if t["options"] else None
         clin_comments = t.get("clinical_comments")
-        cur.execute("SELECT id FROM tests WHERE name = ? AND section_id = ?", (t["name"], sec_id))
+        cur.execute("SELECT id FROM tests WHERE name = ? AND section_id = ? AND parent_rollup_id = ?", (t["name"], sec_id, parent_id))
         r = cur.fetchone()
         if not r:
             cur.execute("""INSERT OR IGNORE INTO tests (name, section_id, is_tracked, sort_order, result_type,
@@ -608,6 +628,7 @@ def seed_database(conn=None):
                 UPDATE tests SET result_type=?, default_unit=?, secondary_unit=?, ref_range=?, options=?, sort_order=?, parent_rollup_id=?, clinical_comments=?
                 WHERE id=?
             """, (t["result_type"], t["default_unit"], t["secondary_unit"], t["ref_range"], opts, t["sort_order"], parent_id, clin_comments, r["id"]))
+
 
         # Also sync into test_parameters for panel sub-parameter tracking and FK constraints
         cur.execute("SELECT id FROM test_parameters WHERE test_id = ? AND parameter_name = ?", (parent_id, t["name"]))

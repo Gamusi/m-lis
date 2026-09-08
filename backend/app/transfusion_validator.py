@@ -17,22 +17,28 @@ def _is_reactive(value: Optional[str]) -> bool:
         return True
     return False
 
+def _is_omitted(value: Optional[str]) -> bool:
+    if not value:
+        return True
+    v = value.strip().lower()
+    return v in ["not done", "not done (omitted)", "not done (optional)", "omitted", "none", "-", "n/a", "na", ""]
+
 def evaluate_blood_group(
     anti_a: Optional[str],
     anti_b: Optional[str],
     anti_d: Optional[str],
-    a1_cells: Optional[str],
-    b_cells: Optional[str]
+    a1_cells: Optional[str] = None,
+    b_cells: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Evaluates ABO & Rh(D) forward and reverse agglutination concordance.
-    Returns dictionary with is_concordant, consolidated_group, and discrepancy_reason.
+    Reverse grouping (a1_cells, b_cells) is optional.
+    When reverse typing is omitted or marked 'Not Done', consolidated blood group
+    is derived directly from forward typing.
     """
     pos_a = _is_reactive(anti_a)
     pos_b = _is_reactive(anti_b)
     pos_d = _is_reactive(anti_d)
-    pos_a1 = _is_reactive(a1_cells)
-    pos_b_cells = _is_reactive(b_cells)
 
     # Derive forward ABO
     if pos_a and not pos_b:
@@ -43,6 +49,22 @@ def evaluate_blood_group(
         fwd_abo = "AB"
     else:
         fwd_abo = "O"
+
+    rh_str = "Positive" if pos_d else "Negative"
+
+    # If reverse typing is omitted or marked Not Done, forward typing determines consolidated group
+    if _is_omitted(a1_cells) and _is_omitted(b_cells):
+        return {
+            "is_concordant": True,
+            "forward_abo": fwd_abo,
+            "reverse_abo": None,
+            "rh": rh_str,
+            "consolidated_group": f"{fwd_abo} Rh(D) {rh_str}",
+            "discrepancy_reason": None
+        }
+
+    pos_a1 = _is_reactive(a1_cells)
+    pos_b_cells = _is_reactive(b_cells)
 
     # Derive reverse ABO
     # Group A has anti-B (A1-, B+)
@@ -59,8 +81,6 @@ def evaluate_blood_group(
         rev_abo = "O"
     else:
         rev_abo = None
-
-    rh_str = "Positive" if pos_d else "Negative"
 
     if fwd_abo == rev_abo:
         return {

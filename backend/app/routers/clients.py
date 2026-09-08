@@ -162,17 +162,26 @@ def create_client(req: ClientCreate, conn: sqlite3.Connection = Depends(get_db),
     today = datetime.date.today()
     yy_str = today.strftime("%y")
     seq_name = f"client_number_{yy_str}"
-    cur.execute("INSERT OR IGNORE INTO sequence_tracker (seq_name, last_value) VALUES (?, 0)", (seq_name,))
-    cur.execute("UPDATE sequence_tracker SET last_value = last_value + 1 WHERE seq_name = ?", (seq_name,))
-    cur.execute("SELECT last_value FROM sequence_tracker WHERE seq_name = ?", (seq_name,))
-    seq_row = cur.fetchone()
-    seq_val = seq_row["last_value"] if seq_row else 1
-
     cur.execute("SELECT facility_acronym FROM facility_settings WHERE id = 1")
     fac_row = cur.fetchone()
     fac_acronym = fac_row["facility_acronym"] if fac_row and fac_row["facility_acronym"] else "AMH"
 
-    generated_client_number = f"{fac_acronym}-C{yy_str}-{seq_val:04d}"
+    prefix = f"{fac_acronym}-C{yy_str}-"
+
+    cur.execute("INSERT OR IGNORE INTO sequence_tracker (seq_name, last_value) VALUES (?, 0)", (seq_name,))
+    cur.execute("SELECT last_value FROM sequence_tracker WHERE seq_name = ?", (seq_name,))
+    seq_row = cur.fetchone()
+    cur_val = seq_row["last_value"] if seq_row else 0
+
+    while True:
+        cur_val += 1
+        candidate = f"{prefix}{cur_val:04d}"
+        cur.execute("SELECT id FROM clients WHERE client_number = ?", (candidate,))
+        if not cur.fetchone():
+            generated_client_number = candidate
+            break
+
+    cur.execute("UPDATE sequence_tracker SET last_value = ? WHERE seq_name = ?", (cur_val, seq_name))
     
     cur.execute("""
         INSERT INTO clients (client_number, full_name, age_years, age_category, sex, phone)
@@ -538,6 +547,20 @@ def delete_order(order_id: int, conn: sqlite3.Connection = Depends(get_db), curr
     logger.info(f"Successfully deleted order {order_id}")
     return {"status": "deleted", "order_id": order_id}
 
+@router.get("/api/orders/{order_id}/results")
+@router.get("/api/clients/orders/{order_id}/results")
+def get_order_results(order_id: int, conn: sqlite3.Connection = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT r.id, r.parameter_id, tp.parameter_name, r.result_value, r.result_unit, r.clinical_flag, r.is_positive, r.edit_reason
+        FROM test_results r
+        LEFT JOIN test_parameters tp ON r.parameter_id = tp.id
+        WHERE r.order_id = ?
+        ORDER BY tp.sort_order, r.id
+    """, (order_id,))
+    rows = [dict(r) for r in cur.fetchall()]
+    return rows
+
 @router.post("/api/clients/orders")
 @router.post("/api/orders")
 def create_order(req: TestOrderCreate, conn: sqlite3.Connection = Depends(get_db), current_user: dict = Depends(get_current_user)):
@@ -802,7 +825,26 @@ def enter_result(req: TestResultCreate, conn: sqlite3.Connection = Depends(get_d
                 anti_d = param_dict.get("Forward Anti-D")
                 a1_cells = param_dict.get("Reverse A1-cells")
                 b_cells = param_dict.get("Reverse B-cells")
-                if anti_a and anti_b and anti_d and a1_cells and b_cells:
+
+                def _is_omitted_param(v):
+                    if not v:
+                        return True
+                    s = str(v).strip().lower()
+                    return s in ["not done", "not done (omitted)", "not done (optional)", "omitted", "none", "-", "n/a", "na", ""]
+
+                if _is_omitted_param(a1_cells) and _is_omitted_param(b_cells):
+                    # Clean up any previously stored reverse typing if omitted in this submission
+                    cur.execute("""
+                        DELETE FROM test_results
+                        WHERE order_id = ? AND parameter_id IN (
+                            SELECT id FROM test_parameters
+                            WHERE test_id = ? AND parameter_name IN ('Reverse A1-cells', 'Reverse B-cells')
+                        )
+                    """, (req.order_id, order["test_id"]))
+                    a1_cells = None
+                    b_cells = None
+
+                if anti_a and anti_b and anti_d:
                     bg_eval = evaluate_blood_group(anti_a, anti_b, anti_d, a1_cells, b_cells)
                     cur.execute("SELECT id FROM test_parameters WHERE test_id = ? AND parameter_name = 'Consolidated Blood Group'", (order["test_id"],))
                     cbg_p = cur.fetchone()
@@ -976,17 +1018,27 @@ def enter_result(req: TestResultCreate, conn: sqlite3.Connection = Depends(get_d
                     m_str = str(today.month)  # Non-zero-padded month (e.g. 8 not 08)
                     ym_key = f"{yy_str}_{m_str}"
                     seq_name = f"lab_number_{ym_key}"
-                    cur.execute("INSERT OR IGNORE INTO sequence_tracker (seq_name, last_value) VALUES (?, 0)", (seq_name,))
-                    cur.execute("UPDATE sequence_tracker SET last_value = last_value + 1 WHERE seq_name = ?", (seq_name,))
-                    cur.execute("SELECT last_value FROM sequence_tracker WHERE seq_name = ?", (seq_name,))
-                    seq_row = cur.fetchone()
-                    seq_val = seq_row["last_value"] if seq_row else 1
 
                     cur.execute("SELECT facility_acronym FROM facility_settings WHERE id = 1")
                     fac_row = cur.fetchone()
                     fac_acronym = fac_row["facility_acronym"] if fac_row and fac_row["facility_acronym"] else "AMH"
 
-                    assigned_lab_number = f"{fac_acronym}-{yy_str}-{m_str}-{seq_val:03d}"
+                    prefix = f"{fac_acronym}-{yy_str}-{m_str}-"
+
+                    cur.execute("INSERT OR IGNORE INTO sequence_tracker (seq_name, last_value) VALUES (?, 0)", (seq_name,))
+                    cur.execute("SELECT last_value FROM sequence_tracker WHERE seq_name = ?", (seq_name,))
+                    seq_row = cur.fetchone()
+                    cur_val = seq_row["last_value"] if seq_row else 0
+
+                    while True:
+                        cur_val += 1
+                        candidate = f"{prefix}{cur_val:03d}"
+                        cur.execute("SELECT id FROM visits WHERE lab_number = ?", (candidate,))
+                        if not cur.fetchone():
+                            assigned_lab_number = candidate
+                            break
+
+                    cur.execute("UPDATE sequence_tracker SET last_value = ? WHERE seq_name = ?", (cur_val, seq_name))
                     cur.execute("UPDATE visits SET lab_number = ? WHERE id = ?", (assigned_lab_number, visit_id))
                 else:
                     assigned_lab_number = v_row["lab_number"]
