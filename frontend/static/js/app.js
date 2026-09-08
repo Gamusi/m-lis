@@ -4378,6 +4378,7 @@ const app = {
          bgHtml += '<div class="modal-param-row" data-param-id="' + p.id + '" data-param-name="' + selfApp.escape(p.parameter_name) + '" style="display:flex; flex-direction:column; gap:4px;">' +
            '<label style="font-size:0.8rem; font-weight:600;">' + selfApp.escape(p.parameter_name) + '</label>' +
            '<select class="modal-param-val bg-eval-trigger" style="width:100%; padding:6px 8px; border:1px solid var(--border-color); border-radius:4px; font-size:0.85rem;">' +
+             '<option value="Not Done" selected>Not Done</option>' +
              '<option value="No Agglutination (-)">No Agglutination (-)</option>' +
              '<option value="Agglutination (+)">Agglutination (+)</option>' +
            '</select>' +
@@ -4409,16 +4410,27 @@ const app = {
          var posA = antiA.indexOf('+') !== -1;
          var posB = antiB.indexOf('+') !== -1;
          var posD = antiD.indexOf('+') !== -1;
-         var posA1 = a1.indexOf('+') !== -1;
-         var posBCells = bCells.indexOf('+') !== -1;
 
          var fwd = (posA && !posB) ? 'A' : (!posA && posB) ? 'B' : (posA && posB) ? 'AB' : 'O';
-         var rev = (!posA1 && posBCells) ? 'A' : (posA1 && !posBCells) ? 'B' : (!posA1 && !posBCells) ? 'AB' : (posA1 && posBCells) ? 'O' : null;
+
+         function isOmitted(v) {
+           if (!v) return true;
+           var s = v.toLowerCase();
+           return s.indexOf('not done') !== -1 || s === '-' || s === 'none' || s === 'omitted';
+         }
+
+         var revSkipped = isOmitted(a1) && isOmitted(bCells);
+         var rev = null;
+         if (!revSkipped) {
+           var posA1 = a1.indexOf('+') !== -1;
+           var posBCells = bCells.indexOf('+') !== -1;
+           rev = (!posA1 && posBCells) ? 'A' : (posA1 && !posBCells) ? 'B' : (!posA1 && !posBCells) ? 'AB' : (posA1 && posBCells) ? 'O' : null;
+         }
 
          var cVal = document.getElementById('bg-consolidated-val');
          var dAlert = document.getElementById('bg-discordance-alert');
          if (cVal) {
-            if (fwd === rev) {
+            if (revSkipped || fwd === rev) {
               cVal.value = fwd + ' Rh(D) ' + (posD ? 'Positive' : 'Negative');
               cVal.style.color = '#0f172a';
               cVal.style.borderColor = '#94a3b8';

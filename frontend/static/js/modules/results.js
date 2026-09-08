@@ -59,6 +59,36 @@
     }
   }),
 
+  handleUrinalysisMultiSelect: function(checkboxEl) {
+    if (!checkboxEl) return;
+    const container = checkboxEl.closest('.modal-param-multiselect');
+    if (!container) return;
+    const val = checkboxEl.value.trim();
+    const allCbs = container.querySelectorAll('.modal-param-checkbox');
+
+    if (val === 'Not Seen') {
+      if (checkboxEl.checked) {
+        allCbs.forEach(cb => {
+          if (cb !== checkboxEl) cb.checked = false;
+        });
+      }
+    } else {
+      if (checkboxEl.checked) {
+        allCbs.forEach(cb => {
+          if (cb.value.trim() === 'Not Seen') cb.checked = false;
+        });
+      } else {
+        // If nothing is checked, re-check "Not Seen"
+        const anyChecked = Array.from(allCbs).some(cb => cb.checked);
+        if (!anyChecked) {
+          allCbs.forEach(cb => {
+            if (cb.value.trim() === 'Not Seen') cb.checked = true;
+          });
+        }
+      }
+    }
+  },
+
   showEnterResultModal: __async(function*(orderId, testId, testName, existingVal, existingUnit, visitId) {
     if (typeof existingVal === 'undefined') existingVal = null;
     if (typeof existingUnit === 'undefined') existingUnit = null;
@@ -369,6 +399,7 @@
          bgHtml += '<div class="modal-param-row" data-param-id="' + p.id + '" data-param-name="' + selfApp.escape(p.parameter_name) + '" style="display:flex; flex-direction:column; gap:4px;">' +
            '<label style="font-size:0.8rem; font-weight:600;">' + selfApp.escape(p.parameter_name) + '</label>' +
            '<select class="modal-param-val bg-eval-trigger" style="width:100%; padding:6px 8px; border:1px solid var(--border-color); border-radius:4px; font-size:0.85rem;">' +
+             '<option value="Not Done" selected>Not Done</option>' +
              '<option value="No Agglutination (-)">No Agglutination (-)</option>' +
              '<option value="Agglutination (+)">Agglutination (+)</option>' +
            '</select>' +
@@ -400,16 +431,27 @@
          var posA = antiA.indexOf('+') !== -1;
          var posB = antiB.indexOf('+') !== -1;
          var posD = antiD.indexOf('+') !== -1;
-         var posA1 = a1.indexOf('+') !== -1;
-         var posBCells = bCells.indexOf('+') !== -1;
 
          var fwd = (posA && !posB) ? 'A' : (!posA && posB) ? 'B' : (posA && posB) ? 'AB' : 'O';
-         var rev = (!posA1 && posBCells) ? 'A' : (posA1 && !posBCells) ? 'B' : (!posA1 && !posBCells) ? 'AB' : (posA1 && posBCells) ? 'O' : null;
+
+         function isOmitted(v) {
+           if (!v) return true;
+           var s = v.toLowerCase();
+           return s.indexOf('not done') !== -1 || s === '-' || s === 'none' || s === 'omitted';
+         }
+
+         var revSkipped = isOmitted(a1) && isOmitted(bCells);
+         var rev = null;
+         if (!revSkipped) {
+           var posA1 = a1.indexOf('+') !== -1;
+           var posBCells = bCells.indexOf('+') !== -1;
+           rev = (!posA1 && posBCells) ? 'A' : (posA1 && !posBCells) ? 'B' : (!posA1 && !posBCells) ? 'AB' : (posA1 && posBCells) ? 'O' : null;
+         }
 
          var cVal = document.getElementById('bg-consolidated-val');
          var dAlert = document.getElementById('bg-discordance-alert');
          if (cVal) {
-            if (fwd === rev) {
+            if (revSkipped || fwd === rev) {
               cVal.value = fwd + ' Rh(D) ' + (posD ? 'Positive' : 'Negative');
               cVal.style.color = '#0f172a';
               cVal.style.borderColor = '#94a3b8';
@@ -608,7 +650,7 @@
             paramsList.forEach(p => {
               let unitDisplay = '';
               if (p.unit && p.secondary_unit) {
-                unitDisplay = `<select class="modal-param-unit" style="padding: 6px 8px; font-size: 0.85rem; border: 1px solid var(--border-color); border-radius: 4px; background: #fff; font-weight: 500;">
+                unitDisplay = `<select class="modal-param-unit" onchange="const inp = this.closest('.modal-param-row').querySelector('.modal-param-val'); if (inp) app.evaluateResultPlausibilityLive(inp, '${this.escape(p.parameter_name)}');" style="padding: 6px 8px; font-size: 0.85rem; border: 1px solid var(--border-color); border-radius: 4px; background: #fff; font-weight: 500;">
                   <option value="${this.escape(p.unit)}">${this.escape(p.unit)}</option>
                   <option value="${this.escape(p.secondary_unit)}">${this.escape(p.secondary_unit)}</option>
                 </select>`;
@@ -622,7 +664,21 @@
               if (isHiv && pOpts && pOpts.length > 0 && pOpts.indexOf('Not Done') === -1) {
                 pOpts = ['Not Done'].concat(pOpts);
               }
-              if (pOpts && pOpts.length > 0) {
+              const pNameLower = (p.parameter_name || '').toLowerCase().trim();
+              const isMultiOption = (pNameLower === 'casts' || pNameLower === 'crystals');
+
+              if (isMultiOption && pOpts && pOpts.length > 0) {
+                valInputHtml = `
+                  <div class="modal-param-multiselect" style="display: flex; flex-wrap: wrap; gap: 4px; max-height: 120px; overflow-y: auto; padding: 4px; border: 1px solid var(--border-color); border-radius: 4px; background: #fff;">
+                    ${pOpts.map(o => `
+                      <label style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.78rem; padding: 2px 6px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 3px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" class="modal-param-checkbox" value="${this.escape(o)}" onchange="app.handleUrinalysisMultiSelect(this)" ${o === 'Not Seen' ? 'checked' : ''}>
+                        <span>${this.escape(o)}</span>
+                      </label>
+                    `).join('')}
+                  </div>
+                `;
+              } else if (pOpts && pOpts.length > 0) {
                 let optsHtml = pOpts.map(o => `<option value="${this.escape(o)}">${this.escape(o)}</option>`).join('');
                 valInputHtml = `<select class="modal-param-val" style="width: 100%; padding: 7px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.88rem;">${optsHtml}</select>`;
               } else {
@@ -649,6 +705,49 @@
           }
         } catch(e) { console.error(e); }
     }
+
+    // If editing and orderId is present, fetch existing order results to pre-populate panel inputs
+    if (isEdit && orderId) {
+      try {
+        const existingResultsRes = yield fetch(`/api/orders/${orderId}/results`);
+        if (existingResultsRes.ok) {
+          const existingResults = yield existingResultsRes.json();
+          if (existingResults && existingResults.length > 0) {
+            existingResults.forEach(er => {
+              if (er.parameter_id) {
+                const row = paramsContainer.querySelector(`.modal-param-row[data-param-id="${er.parameter_id}"]`)
+                  || (singleContainer ? singleContainer.querySelector(`.widal-param-row[data-param-id="${er.parameter_id}"]`) : null);
+                if (row) {
+                  const valInp = row.querySelector('.modal-param-val') || row.querySelector('.widal-param-val');
+                  if (valInp && er.result_value !== null && er.result_value !== undefined) {
+                    valInp.value = er.result_value;
+                    if (valInp.classList.contains('bg-eval-trigger') && typeof updateBgEval === 'function') {
+                      updateBgEval();
+                    }
+                  }
+                  // Handle multiselect checkboxes (e.g. Urinalysis casts/crystals)
+                  const mContainer = row.querySelector('.modal-param-multiselect');
+                  if (mContainer && er.result_value) {
+                    const vals = er.result_value.split(',').map(s => s.trim());
+                    mContainer.querySelectorAll('.modal-param-checkbox').forEach(cb => {
+                      cb.checked = vals.includes(cb.value.trim());
+                    });
+                  }
+                  // Handle unit dropdown if present
+                  const unitSelect = row.querySelector('select.modal-param-unit');
+                  if (unitSelect && er.result_unit) {
+                    unitSelect.value = er.result_unit;
+                  }
+                }
+              }
+            });
+          }
+        }
+      } catch(err) {
+        console.error('Failed to pre-populate panel parameter results:', err);
+      }
+    }
+
     this.openModal('result-entry-modal');
     
     // Add keyboard navigation
@@ -705,13 +804,20 @@
          const rows = paramsContainer.querySelectorAll('.modal-param-row');
          rows.forEach(r => {
             const pid = parseInt(r.getAttribute('data-param-id'), 10);
-            const pval = r.querySelector('.modal-param-val').value.trim();
+            const valEl = r.querySelector('.modal-param-val');
+            let pval = '';
+            if (valEl) {
+              pval = valEl.value.trim();
+            } else {
+              const checked = Array.from(r.querySelectorAll('.modal-param-checkbox:checked')).map(cb => cb.value.trim());
+              pval = checked.length > 0 ? checked.join(', ') : 'Not Seen';
+            }
             const uElem = r.querySelector('.modal-param-unit');
             let punit = null;
             if (uElem) {
               punit = uElem.tagName === 'SELECT' ? uElem.value : (uElem.getAttribute('data-unit') || uElem.textContent.trim());
             }
-            if (pval && pval !== 'Not Done') {
+            if (pval && pval !== 'Not Done' && pval.indexOf('Not Done') === -1) {
               anyTested = true;
               if (pval === 'Reactive' || pval === 'Positive (Detected)') {
                 anyReactive = true;
@@ -900,13 +1006,26 @@
     });
   }),
 
-  findMatchingRefRangeRule: function(paramName) {
+  findMatchingRefRangeRule: function(paramName, activeUnit) {
     if (!paramName || !this.referenceRangesList) return null;
     const nameLower = paramName.trim().toLowerCase();
-    const rules = this.referenceRangesList.filter(function(r) {
+    const unitLower = activeUnit ? activeUnit.trim().toLowerCase() : null;
+
+    // Filter rules by parameter name
+    let rules = this.referenceRangesList.filter(function(r) {
       return (r.parameter_name || '').trim().toLowerCase() === nameLower;
     });
     if (rules.length === 0) return null;
+
+    // If unit is specified, prefer unit-matched rules
+    if (unitLower) {
+      const unitMatched = rules.filter(function(r) {
+        return (r.unit || '').trim().toLowerCase() === unitLower;
+      });
+      if (unitMatched.length > 0) {
+        rules = unitMatched;
+      }
+    }
 
     let clientAge = null;
     let clientSex = null;
@@ -939,14 +1058,14 @@
     return rules[0];
   },
 
-  checkPlausibilityLimits: function(paramName, rawVal) {
+  checkPlausibilityLimits: function(paramName, rawVal, activeUnit) {
     if (rawVal === null || rawVal === undefined || String(rawVal).trim() === '') {
       return null;
     }
     const valNum = parseFloat(String(rawVal).trim().split(' ')[0]);
     if (isNaN(valNum)) return null;
 
-    const rule = this.findMatchingRefRangeRule(paramName);
+    const rule = this.findMatchingRefRangeRule(paramName, activeUnit);
     if (!rule) return null;
 
     const sMin = rule.sanity_min;
@@ -977,11 +1096,26 @@
   evaluateResultPlausibilityLive: function(inputEl, paramName) {
     if (!inputEl) return;
     const val = inputEl.value;
-    const check = this.checkPlausibilityLimits(paramName, val);
+
+    // Detect active unit from sibling or parent row
+    let activeUnit = null;
+    const parentRow = inputEl.closest('.modal-param-row');
+    if (parentRow) {
+      const uEl = parentRow.querySelector('.modal-param-unit');
+      if (uEl) {
+        activeUnit = uEl.tagName === 'SELECT' ? uEl.value : (uEl.getAttribute('data-unit') || uEl.textContent.trim());
+      }
+    } else {
+      const singleUnitEl = document.getElementById('result-entry-unit');
+      if (singleUnitEl) {
+        activeUnit = singleUnitEl.tagName === 'SELECT' ? singleUnitEl.value : singleUnitEl.textContent.trim();
+      }
+    }
+
+    const check = this.checkPlausibilityLimits(paramName, val, activeUnit);
 
     // Locate feedback container (single modal container or modal-param-row container)
     let msgEl = null;
-    const parentRow = inputEl.closest('.modal-param-row');
     if (parentRow) {
       msgEl = parentRow.querySelector('.modal-param-plausibility-msg');
     } else {

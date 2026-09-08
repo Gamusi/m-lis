@@ -123,10 +123,9 @@
                data-client-id="${p.id}"
                tabindex="0"
                role="button"
-               style="padding: 10px 14px; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.2s; display: flex; align-items: center; background: ${isSelected ? '#DBEAFE' : 'transparent'};" 
+               style="padding: 10px 14px; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.2s, border-color 0.2s; display: flex; align-items: center;" 
                onclick="app.selectClient(${p.id}, '${this.escape(p.client_number)}', '${this.escape(p.full_name)}', '${p.sex}')"
-               onkeydown="app.handleClientItemKeyNav(event, ${p.id}, '${this.escape(p.client_number)}', '${this.escape(p.full_name)}', '${p.sex}')"
-               onmouseover="if(!this.classList.contains('selected')) this.style.background='#F1F5F9'" onmouseout="if(!this.classList.contains('selected')) this.style.background='transparent'">
+               onkeydown="app.handleClientItemKeyNav(event, ${p.id}, '${this.escape(p.client_number)}', '${this.escape(p.full_name)}', '${p.sex}')">
             ${checkboxHtml}
             <div style="flex: 1;">
               <div style="font-weight: 700; color: var(--primary-color);">${this.escape(p.full_name)}</div>
@@ -207,6 +206,17 @@
   selectClient: __async(function*(pid, pnum, pname, psex) {
     this.currentClientId = pid;
     this.currentClientData = { id: pid, client_number: pnum, full_name: pname, sex: psex };
+    
+    // Update active highlight in client list
+    const items = document.querySelectorAll('.client-list-item');
+    items.forEach(el => {
+      if (parseInt(el.getAttribute('data-client-id'), 10) === pid) {
+        el.classList.add('selected');
+      } else {
+        el.classList.remove('selected');
+      }
+    });
+
     const box = document.getElementById('client-detail-box');
     box.innerHTML = `
       <div>
@@ -288,13 +298,17 @@
       </div>
     `;
 
-    yield this.loadWards();
-    yield this.loadClinicians();
-    yield this.loadSpecimens();
-    yield this.loadTestOptionsMulti();
+    yield Promise.all([
+      this.loadWards(),
+      this.loadClinicians(),
+      this.loadSpecimens(),
+      this.loadTestOptionsMulti()
+    ]);
     this.restoreClientVisitPrefs(pid);
-    yield this.loadPendingTests(pid);
-    yield this.loadHistoricalVisits(pid);
+    yield Promise.all([
+      this.loadPendingTests(pid),
+      this.loadHistoricalVisits(pid)
+    ]);
   }),
 
   saveClientVisitPrefs: function(pid) {
@@ -798,25 +812,46 @@
           <tbody>
       `;
       pending.forEach(o => {
-        html += `
-          <tr>
-            <td style="text-align:center; padding:8px; border-bottom:1px solid #ddd;">
-              <input type="checkbox" class="pending-order-checkbox" value="${o.order_id}" onchange="app.onPendingOrderSelectionChange()">
-            </td>
-            <td style="padding:8px; border-bottom:1px solid #ddd;"><strong>${this.escape(o.test_name)}</strong><br><small style="color:var(--text-muted);">Order ID: ${o.order_id}</small></td>
-            <td style="padding:8px; border-bottom:1px solid #ddd;">${o.ordered_at}</td>
-            <td style="padding:8px; border-bottom:1px solid #ddd; text-align:right;">
-              <button class="btn btn-primary btn-sm" onclick="app.showEnterResultModal(${o.order_id}, ${o.test_id}, '${this.escape(o.test_name)}', ${o.results && o.results.length > 0 ? `'${this.escape(o.results[0].result_value || '')}'` : 'null'}, ${o.results && o.results.length > 0 && o.results[0].result_unit ? `'${this.escape(o.results[0].result_unit)}'` : 'null'}, ${o.visit_id || 'null'})">
-                ${o.results && o.results.length > 0 ? 'Edit Result' : 'Enter Result'}
-              </button>
-              <button class="btn btn-danger btn-sm" onclick="app.removeOrder(${o.order_id})">Remove</button>
-            </td>
-          </tr>
-        `;
-      });
-      html += '</tbody></table>';
-      container.innerHTML = html;
-    } catch (e) {
+            const resValStr = (o.results && o.results.length > 0) ? (o.results[0].result_value || '') : '';
+            const resUnitStr = (o.results && o.results.length > 0 && o.results[0].result_unit) ? o.results[0].result_unit : '';
+            html += `
+              <tr>
+                <td style="text-align:center; padding:8px; border-bottom:1px solid #ddd;">
+                  <input type="checkbox" class="pending-order-checkbox" value="${o.order_id}" onchange="app.onPendingOrderSelectionChange()">
+                </td>
+                <td style="padding:8px; border-bottom:1px solid #ddd;"><strong>${this.escape(o.test_name)}</strong><br><small style="color:var(--text-muted);">Order ID: ${o.order_id}</small></td>
+                <td style="padding:8px; border-bottom:1px solid #ddd;">${o.ordered_at}</td>
+                <td style="padding:8px; border-bottom:1px solid #ddd; text-align:right;">
+                  <button type="button" class="btn btn-primary btn-sm btn-pending-order-action" data-order-id="${o.order_id}" data-test-id="${o.test_id}" data-test-name="${this.escape(o.test_name)}" data-existing-val="${this.escape(resValStr)}" data-existing-unit="${this.escape(resUnitStr)}" data-visit-id="${o.visit_id || ''}">
+                    ${o.results && o.results.length > 0 ? 'Edit Result' : 'Enter Result'}
+                  </button>
+                  <button type="button" class="btn btn-danger btn-sm btn-pending-order-remove" data-order-id="${o.order_id}">Remove</button>
+                </td>
+              </tr>
+            `;
+          });
+          html += '</tbody></table>';
+          container.innerHTML = html;
+
+          const self = this;
+          container.querySelectorAll('.btn-pending-order-action').forEach(btn => {
+            btn.onclick = function() {
+              const oId = parseInt(this.getAttribute('data-order-id'), 10);
+              const tId = parseInt(this.getAttribute('data-test-id'), 10);
+              const tName = this.getAttribute('data-test-name') || '';
+              const exVal = this.getAttribute('data-existing-val') || '';
+              const exUnit = this.getAttribute('data-existing-unit') || '';
+              const vId = parseInt(this.getAttribute('data-visit-id'), 10) || null;
+              self.showEnterResultModal(oId, tId, tName, exVal, exUnit, vId);
+            };
+          });
+          container.querySelectorAll('.btn-pending-order-remove').forEach(btn => {
+            btn.onclick = function() {
+              const oId = parseInt(this.getAttribute('data-order-id'), 10);
+              self.removeOrder(oId);
+            };
+          });
+        } catch (e) {
       console.error(e);
       container.innerHTML = 'Error loading pending tests.';
     }
@@ -1305,24 +1340,27 @@
             }
 
             let actionBtns = '';
+            const existingValStr = hasResult ? (o.results[0].result_value || '') : '';
+            const existingUnitStr = (hasResult && o.results[0].result_unit) ? o.results[0].result_unit : '';
+
             if (isAdmin) {
               if (o.status === 'entered') {
                 actionBtns = `
                   <div style="display:flex; gap:6px; justify-content:flex-end;">
-                    <button type="button" class="btn btn-success btn-sm" style="padding:4px 8px; font-weight:600; font-size:0.78rem;" onclick="app.verifySingleOrder(${o.order_id}, ${visitId})">Verify</button>
-                    <button type="button" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:0.78rem;" onclick="app.showEnterResultModal(${o.order_id}, ${o.test_id}, '${this.escape(o.test_name)}', '${hasResult ? this.escape(o.results[0].result_value || '') : ''}', '${hasResult && o.results[0].result_unit ? this.escape(o.results[0].result_unit) : ''}', ${visitId})">Edit</button>
+                    <button type="button" class="btn btn-success btn-sm btn-verify-order" style="padding:4px 8px; font-weight:600; font-size:0.78rem;" data-order-id="${o.order_id}" data-visit-id="${visitId}">Verify</button>
+                    <button type="button" class="btn btn-secondary btn-sm btn-edit-order-res" style="padding:4px 8px; font-size:0.78rem;" data-order-id="${o.order_id}" data-test-id="${o.test_id}" data-test-name="${this.escape(o.test_name)}" data-existing-val="${this.escape(existingValStr)}" data-existing-unit="${this.escape(existingUnitStr)}" data-visit-id="${visitId}">Edit</button>
                   </div>
                 `;
               } else if (o.status === 'completed') {
-                actionBtns = `<button type="button" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:0.78rem;" onclick="app.showEnterResultModal(${o.order_id}, ${o.test_id}, '${this.escape(o.test_name)}', '${hasResult ? this.escape(o.results[0].result_value || '') : ''}', '${hasResult && o.results[0].result_unit ? this.escape(o.results[0].result_unit) : ''}', ${visitId})">Edit</button>`;
+                actionBtns = `<button type="button" class="btn btn-secondary btn-sm btn-edit-order-res" style="padding:4px 8px; font-size:0.78rem;" data-order-id="${o.order_id}" data-test-id="${o.test_id}" data-test-name="${this.escape(o.test_name)}" data-existing-val="${this.escape(existingValStr)}" data-existing-unit="${this.escape(existingUnitStr)}" data-visit-id="${visitId}">Edit</button>`;
               } else {
-                actionBtns = `<button type="button" class="btn btn-primary btn-sm" style="padding:4px 8px; font-size:0.78rem;" onclick="app.showEnterResultModal(${o.order_id}, ${o.test_id}, '${this.escape(o.test_name)}', '', '', ${visitId})">Enter</button>`;
+                actionBtns = `<button type="button" class="btn btn-primary btn-sm btn-edit-order-res" style="padding:4px 8px; font-size:0.78rem;" data-order-id="${o.order_id}" data-test-id="${o.test_id}" data-test-name="${this.escape(o.test_name)}" data-existing-val="" data-existing-unit="" data-visit-id="${visitId}">Enter</button>`;
               }
             } else {
               if (o.status === 'pending') {
-                actionBtns = `<button type="button" class="btn btn-primary btn-sm" style="padding:4px 8px; font-size:0.78rem;" onclick="app.showEnterResultModal(${o.order_id}, ${o.test_id}, '${this.escape(o.test_name)}', '', '', ${visitId})">Enter</button>`;
+                actionBtns = `<button type="button" class="btn btn-primary btn-sm btn-edit-order-res" style="padding:4px 8px; font-size:0.78rem;" data-order-id="${o.order_id}" data-test-id="${o.test_id}" data-test-name="${this.escape(o.test_name)}" data-existing-val="" data-existing-unit="" data-visit-id="${visitId}">Enter</button>`;
               } else {
-                actionBtns = `<button type="button" class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:0.78rem;" onclick="app.showEnterResultModal(${o.order_id}, ${o.test_id}, '${this.escape(o.test_name)}', '${hasResult ? this.escape(o.results[0].result_value || '') : ''}', '${hasResult && o.results[0].result_unit ? this.escape(o.results[0].result_unit) : ''}', ${visitId})">Edit</button>`;
+                actionBtns = `<button type="button" class="btn btn-secondary btn-sm btn-edit-order-res" style="padding:4px 8px; font-size:0.78rem;" data-order-id="${o.order_id}" data-test-id="${o.test_id}" data-test-name="${this.escape(o.test_name)}" data-existing-val="${this.escape(existingValStr)}" data-existing-unit="${this.escape(existingUnitStr)}" data-visit-id="${visitId}">Edit</button>`;
               }
             }
 
@@ -1340,6 +1378,26 @@
           });
           oHtml += '</tbody></table>';
           ordersList.innerHTML = oHtml;
+
+          const self = this;
+          ordersList.querySelectorAll('.btn-verify-order').forEach(btn => {
+            btn.onclick = function() {
+              const oId = parseInt(this.getAttribute('data-order-id'), 10);
+              const vId = parseInt(this.getAttribute('data-visit-id'), 10);
+              self.verifySingleOrder(oId, vId);
+            };
+          });
+          ordersList.querySelectorAll('.btn-edit-order-res').forEach(btn => {
+            btn.onclick = function() {
+              const oId = parseInt(this.getAttribute('data-order-id'), 10);
+              const tId = parseInt(this.getAttribute('data-test-id'), 10);
+              const tName = this.getAttribute('data-test-name') || '';
+              const exVal = this.getAttribute('data-existing-val') || '';
+              const exUnit = this.getAttribute('data-existing-unit') || '';
+              const vId = parseInt(this.getAttribute('data-visit-id'), 10) || null;
+              self.showEnterResultModal(oId, tId, tName, exVal, exUnit, vId);
+            };
+          });
         }
       }
       

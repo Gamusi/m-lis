@@ -477,18 +477,21 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 
 .client-list-item {
   outline: none;
+  border-left: 3px solid transparent;
 }
 
 .client-list-item:focus {
-  background-color: #EFF6FF !important;
-  outline: 2px solid var(--primary-color);
-  outline-offset: -2px;
+  background-color: #F1F5F9;
+  border-left: 3px solid var(--primary-light);
+  outline: none;
 }
 
 .client-list-item.selected {
   background-color: #DBEAFE !important;
-  border-left: 3px solid var(--primary-color);
+  border-left: 4px solid var(--primary-color) !important;
+  outline: none !important;
 }
+
 
 .visit-test-row:focus-within, .add-test-row:focus-within {
   background-color: #EFF6FF;
