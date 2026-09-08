@@ -1,6 +1,54 @@
 // M-LIS Surveillance & Performance Reports Module
 (function(app) {
   Object.assign(app, {
+  renderReports: __async(function*(container) {
+    if (!this.activeReportSubtab) {
+      this.activeReportSubtab = 'operations';
+    }
+    
+    container.innerHTML = `
+      <div class="card">
+        <div class="subtab-nav">
+          <button id="report-subtab-ops" class="btn ${this.activeReportSubtab === 'operations' ? 'btn-primary' : 'btn-secondary'}" onclick="app.switchReportSubtab('operations')">
+            ${this.icon('activity')} Operations & Performance
+          </button>
+          <button id="report-subtab-surv" class="btn ${this.activeReportSubtab === 'surveillance' ? 'btn-primary' : 'btn-secondary'}" onclick="app.switchReportSubtab('surveillance')">
+            ${this.icon('shield')} Epidemiological Surveillance
+          </button>
+        </div>
+        <div id="report-subtab-content"></div>
+      </div>
+    `;
+
+    yield this.renderActiveReportSubtab();
+  }),
+
+  switchReportSubtab: __async(function*(tabName) {
+    this.activeReportSubtab = tabName;
+    var btnOps = document.getElementById('report-subtab-ops');
+    var btnSurv = document.getElementById('report-subtab-surv');
+    if (btnOps && btnSurv) {
+      if (tabName === 'operations') {
+        btnOps.className = 'btn btn-primary';
+        btnSurv.className = 'btn btn-secondary';
+      } else {
+        btnOps.className = 'btn btn-secondary';
+        btnSurv.className = 'btn btn-primary';
+      }
+    }
+    yield this.renderActiveReportSubtab();
+  }),
+
+  renderActiveReportSubtab: __async(function*() {
+    var subtabContainer = document.getElementById('report-subtab-content');
+    if (!subtabContainer) return;
+    if (this.activeReportSubtab === 'surveillance') {
+      yield this.renderSurveillanceSubtab(subtabContainer);
+    } else {
+      yield this.renderOperationsSubtab(subtabContainer);
+    }
+  }),
+
   renderSurveillanceSubtab: __async(function*(container) {
     var today = new Date().toISOString().split('T')[0];
     container.innerHTML = `
@@ -596,10 +644,7 @@
     link.click();
     document.body.removeChild(link);
     this.showNotificationModal("Success", 'Surveillance CSV exported successfully!', false);
-  },
-
-  // Test Reports View
-  renderClients: __async(function*(container) {
-
+  }
   });
 })(window.app);
+

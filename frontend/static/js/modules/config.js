@@ -561,13 +561,15 @@
       }
     }
 
-    const currentUnit = document.getElementById('ref-range-modal-unit'() ? ).value : null) || unitArray[0] || null;
+    const unitElem = document.getElementById('ref-range-modal-unit');
+    const currentUnit = (unitElem ? unitElem.value : null) || unitArray[0] || null;
     this.populateRefRangeBoundsForUnit(paramName, currentUnit);
   },
 
   handleRefRangeUnitChange: function(newUnit, paramName) {
     if (!paramName) {
-      paramName = document.getElementById('ref-range-modal-param'() ? ).value : null) || '';
+      const paramElem = document.getElementById('ref-range-modal-param');
+      paramName = (paramElem ? paramElem.value : '') || '';
     }
     if (paramName) {
       this.populateRefRangeBoundsForUnit(paramName, newUnit);
@@ -655,7 +657,8 @@
   },
 
   filterReferenceRangesTable: function() {
-    const q = (document.getElementById('ref-range-search'() ? ).value : null) || '').toLowerCase().trim();
+    const searchEl = document.getElementById('ref-range-search');
+    const q = (searchEl ? searchEl.value : '').toLowerCase().trim();
     const rows = document.querySelectorAll('#reference-ranges-table-container tbody tr');
     rows.forEach(r => {
       const text = r.textContent.toLowerCase();
@@ -1337,7 +1340,8 @@
   }),
 
   handleTestMultiUnitsToggle: function() {
-    const isMulti = document.getElementById('test-config-multi-units'() ? ).checked : null);
+    const multiEl = document.getElementById('test-config-multi-units');
+    const isMulti = multiEl ? multiEl.checked : false;
     const group = document.getElementById('test-config-secondary-unit-group');
     if (group) group.style.display = isMulti ? 'block' : 'none';
     if (!isMulti) {
@@ -1405,8 +1409,10 @@
     const section_id = parseInt(document.getElementById('test-config-section').value, 10);
     const result_type = document.getElementById('test-config-result-type').value;
     const default_unit = document.getElementById('test-config-unit').value.trim() || null;
-    const isMultiUnit = document.getElementById('test-config-multi-units'() ? ).checked : null);
-    const secUnitVal = document.getElementById('test-config-secondary-unit'() ? ).value : null).trim();
+    const multiEl = document.getElementById('test-config-multi-units');
+    const isMultiUnit = multiEl ? multiEl.checked : false;
+    const secUnitEl = document.getElementById('test-config-secondary-unit');
+    const secUnitVal = (secUnitEl ? secUnitEl.value : '').trim();
     const secondary_unit = (isMultiUnit && secUnitVal) ? secUnitVal : null;
     const optionsRaw = document.getElementById('test-config-options').value;
     const is_tracked = document.getElementById('test-config-tracked').checked;

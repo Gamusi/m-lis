@@ -564,7 +564,7 @@
       wardSelect.innerHTML = '<option value="">All Wards / OPD</option>';
       if (!this.wards || this.wards.length === 0) {
         try {
-          const res = yield fetch('/api/wards');
+          const res = yield fetch('/api/config/wards');
           if (res.ok) this.wards = yield res.json();
         } catch (e) {}
       }
@@ -581,7 +581,7 @@
       secSelect.innerHTML = '<option value="">All Sections</option>';
       if (!this.sections || this.sections.length === 0) {
         try {
-          const res = yield fetch('/api/sections');
+          const res = yield fetch('/api/config/sections');
           if (res.ok) this.sections = yield res.json();
         } catch (e) {}
       }
