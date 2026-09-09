@@ -7,7 +7,7 @@ from ..schemas import (
     ClinicianCreate, ClinicianUpdate, ClinicianResponse,
     ReferenceRangeCreate, ReferenceRangeUpdate, ReferenceRangeResponse,
     FacilitySettingsUpdate, FacilitySettingsResponse,
-    SpecimenTypeResponse
+    SpecimenTypeCreate, SpecimenTypeUpdate, SpecimenTypeResponse
 )
 from ..auth import get_current_user, require_admin
 from ..specimen_validator import get_compatible_specimens_for_test, validate_test_specimen_selection
@@ -16,10 +16,122 @@ from pydantic import BaseModel
 router = APIRouter(prefix="/api/config", tags=["Configuration"])
 
 @router.get("/specimens", response_model=List[SpecimenTypeResponse])
-def get_specimens(conn: sqlite3.Connection = Depends(get_db), current_user: dict = Depends(get_current_user)):
+def get_specimens(active_only: Optional[bool] = None, conn: sqlite3.Connection = Depends(get_db), current_user: dict = Depends(get_current_user)):
     cur = conn.cursor()
-    cur.execute("SELECT id, name, container, min_volume, is_active, sort_order FROM specimen_types WHERE is_active = 1 ORDER BY sort_order, id")
+    if active_only is True or active_only is None:
+        cur.execute("SELECT id, name, container, min_volume, storage_temp, is_active, sort_order FROM specimen_types WHERE is_active = 1 ORDER BY sort_order, id")
+    else:
+        cur.execute("SELECT id, name, container, min_volume, storage_temp, is_active, sort_order FROM specimen_types ORDER BY sort_order, id")
     return [dict(r) for r in cur.fetchall()]
+
+@router.post("/specimens", response_model=SpecimenTypeResponse)
+def create_specimen(req: SpecimenTypeCreate, admin_user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db)):
+    name = req.name.strip() if req.name else ""
+    if not name:
+        raise HTTPException(status_code=400, detail="Specimen name cannot be empty")
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM specimen_types WHERE LOWER(name) = LOWER(?)", (name,))
+    if cur.fetchone():
+        raise HTTPException(status_code=400, detail="Specimen type already exists")
+    
+    cur.execute("""
+        INSERT INTO specimen_types (name, container, min_volume, storage_temp, sort_order, is_active)
+        VALUES (?, ?, ?, ?, ?, 1)
+    """, (name, req.container.strip() if req.container else None, req.min_volume.strip() if req.min_volume else None, req.storage_temp.strip() if req.storage_temp else None, req.sort_order))
+    sid = cur.lastrowid
+    conn.commit()
+
+    conn.execute("INSERT INTO audit_log (user_id, action, detail) VALUES (?, ?, ?)", 
+                 (admin_user["id"], "create_specimen_type", f"Created specimen type '{name}' (ID {sid})"))
+    conn.commit()
+    return SpecimenTypeResponse(id=sid, name=name, container=req.container, min_volume=req.min_volume, storage_temp=req.storage_temp, sort_order=req.sort_order, is_active=True)
+
+@router.put("/specimens/{specimen_id}", response_model=SpecimenTypeResponse)
+def update_specimen(specimen_id: int, req: SpecimenTypeUpdate, admin_user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db)):
+    cur = conn.cursor()
+    cur.execute("SELECT id, name, container, min_volume, storage_temp, sort_order, is_active FROM specimen_types WHERE id = ?", (specimen_id,))
+    existing = cur.fetchone()
+    if not existing:
+        raise HTTPException(status_code=404, detail="Specimen type not found")
+    
+    new_name = req.name.strip() if req.name is not None else existing["name"]
+    if req.name is not None and not new_name:
+        raise HTTPException(status_code=400, detail="Specimen name cannot be empty")
+    
+    if req.name is not None and new_name.lower() != existing["name"].lower():
+        cur.execute("SELECT id FROM specimen_types WHERE LOWER(name) = LOWER(?) AND id != ?", (new_name, specimen_id))
+        if cur.fetchone():
+            raise HTTPException(status_code=400, detail="Specimen type with this name already exists")
+            
+    new_container = req.container.strip() if req.container is not None else existing["container"]
+    new_min_volume = req.min_volume.strip() if req.min_volume is not None else existing["min_volume"]
+    new_storage_temp = req.storage_temp.strip() if req.storage_temp is not None else existing["storage_temp"]
+    new_sort_order = req.sort_order if req.sort_order is not None else existing["sort_order"]
+    new_is_active = req.is_active if req.is_active is not None else bool(existing["is_active"])
+
+    cur.execute("""
+        UPDATE specimen_types
+        SET name = ?, container = ?, min_volume = ?, storage_temp = ?, sort_order = ?, is_active = ?
+        WHERE id = ?
+    """, (new_name, new_container, new_min_volume, new_storage_temp, new_sort_order, 1 if new_is_active else 0, specimen_id))
+    conn.commit()
+
+    conn.execute("INSERT INTO audit_log (user_id, action, detail) VALUES (?, ?, ?)",
+                 (admin_user["id"], "update_specimen_type", f"Updated specimen type ID {specimen_id} ({new_name})"))
+    conn.commit()
+
+    return SpecimenTypeResponse(id=specimen_id, name=new_name, container=new_container, min_volume=new_min_volume, storage_temp=new_storage_temp, sort_order=new_sort_order, is_active=new_is_active)
+
+@router.get("/specimens/{specimen_id}/usage")
+def get_specimen_usage(specimen_id: int, conn: sqlite3.Connection = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    cur = conn.cursor()
+    cur.execute("SELECT id, name FROM specimen_types WHERE id = ?", (specimen_id,))
+    existing = cur.fetchone()
+    if not existing:
+        raise HTTPException(status_code=404, detail="Specimen type not found")
+        
+    cur.execute("SELECT COUNT(*) as cnt FROM test_orders WHERE specimen_type_id = ? AND status = 'pending'", (specimen_id,))
+    pending_orders = cur.fetchone()["cnt"]
+    
+    cur.execute("SELECT COUNT(*) as cnt FROM test_orders WHERE specimen_type_id = ?", (specimen_id,))
+    total_orders = cur.fetchone()["cnt"]
+    
+    cur.execute("SELECT COUNT(*) as cnt FROM visits WHERE specimen_type_id = ?", (specimen_id,))
+    visits_count = cur.fetchone()["cnt"]
+    
+    return {
+        "specimen_id": specimen_id,
+        "name": existing["name"],
+        "pending_orders_count": pending_orders,
+        "total_orders_count": total_orders,
+        "visits_count": visits_count,
+        "has_active_orders": pending_orders > 0
+    }
+
+@router.delete("/specimens/{specimen_id}")
+def delete_specimen(specimen_id: int, admin_user: dict = Depends(require_admin), conn: sqlite3.Connection = Depends(get_db)):
+    cur = conn.cursor()
+    cur.execute("SELECT id, name FROM specimen_types WHERE id = ?", (specimen_id,))
+    existing = cur.fetchone()
+    if not existing:
+        raise HTTPException(status_code=404, detail="Specimen type not found")
+        
+    # Guard against soft-deactivating specimen currently in active pending orders
+    cur.execute("SELECT COUNT(*) as cnt FROM test_orders WHERE specimen_type_id = ? AND status = 'pending'", (specimen_id,))
+    pending_count = cur.fetchone()["cnt"]
+    if pending_count > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot deactivate '{existing['name']}' because it is currently referenced by {pending_count} pending test order(s). Please fulfill or cancel these orders first."
+        )
+
+    cur.execute("UPDATE specimen_types SET is_active = 0 WHERE id = ?", (specimen_id,))
+    conn.commit()
+
+    conn.execute("INSERT INTO audit_log (user_id, action, detail) VALUES (?, ?, ?)",
+                 (admin_user["id"], "delete_specimen_type", f"Soft deleted specimen type ID {specimen_id} ('{existing['name']}')"))
+    conn.commit()
+    return {"status": "deleted", "name": existing["name"]}
 
 @router.get("/sections")
 def get_sections(conn: sqlite3.Connection = Depends(get_db), current_user: dict = Depends(get_current_user)):

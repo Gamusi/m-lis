@@ -238,7 +238,10 @@
   <div id="result-entry-modal" class="modal-overlay" style="display: none;">
     <div class="modal-content" style="width: 680px; max-width: 95vw; max-height: 88vh; display: flex; flex-direction: column;">
       <h3 id="result-entry-modal-title" style="margin-top: 0; margin-bottom: 4px; color: var(--primary-color);">Enter Result</h3>
-      <p id="result-entry-test-name" style="font-weight: bold; margin-bottom: 12px; color: var(--text-dark);"></p>
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+        <p id="result-entry-test-name" style="font-weight: bold; margin: 0; color: var(--text-dark);"></p>
+        <span id="result-entry-specimen-badge" style="font-size: 0.8rem; background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 4px; border: 1px solid #cbd5e1; display: none;"></span>
+      </div>
       
       <form id="result-entry-form" style="display: flex; flex-direction: column; flex: 1; overflow-y: auto; padding-right: 4px;">
         <input type="hidden" id="result-entry-order-id">
@@ -533,6 +536,41 @@
         <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
           <button type="button" class="btn btn-secondary" onclick="app.closeModal('ward-modal')">Cancel</button>
           <button type="submit" class="btn btn-primary">Save Ward</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Specimen Modal (Add / Edit) -->
+  <div id="specimen-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 480px;">
+      <h3 id="specimen-modal-title" style="margin-top: 0; color: var(--primary-color);">Add Specimen Type</h3>
+      <form id="specimen-modal-form" onsubmit="app.submitSpecimenModal(event)">
+        <input type="hidden" id="specimen-modal-id">
+        <input type="hidden" id="specimen-modal-active" value="1">
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label for="specimen-modal-name">Specimen Name: <span style="color:red;">*</span></label>
+          <input type="text" id="specimen-modal-name" required placeholder="e.g. EDTA Whole Blood" style="width: 100%; padding: 8px;">
+        </div>
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label for="specimen-modal-container">Primary Container / Tube:</label>
+          <input type="text" id="specimen-modal-container" placeholder="e.g. Lavender / Purple Top (K2/K3 EDTA)" style="width: 100%; padding: 8px;">
+        </div>
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label for="specimen-modal-min-volume">Minimum Required Volume:</label>
+          <input type="text" id="specimen-modal-min-volume" placeholder="e.g. 2.0 mL" style="width: 100%; padding: 8px;">
+        </div>
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label for="specimen-modal-storage-temp">Storage & Transport Temperature:</label>
+          <input type="text" id="specimen-modal-storage-temp" placeholder="e.g. 2 - 8°C (Refrigerated)" style="width: 100%; padding: 8px;">
+        </div>
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label for="specimen-modal-sort-order">Display Sort Order:</label>
+          <input type="number" id="specimen-modal-sort-order" value="0" style="width: 100%; padding: 8px;">
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+          <button type="button" class="btn btn-secondary" onclick="app.closeModal('specimen-modal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Specimen</button>
         </div>
       </form>
     </div>

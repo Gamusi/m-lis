@@ -89,14 +89,26 @@
     }
   },
 
-  showEnterResultModal: __async(function*(orderId, testId, testName, existingVal, existingUnit, visitId) {
+  showEnterResultModal: __async(function*(orderId, testId, testName, existingVal, existingUnit, visitId, specimenName) {
     if (typeof existingVal === 'undefined') existingVal = null;
     if (typeof existingUnit === 'undefined') existingUnit = null;
     if (typeof visitId === 'undefined') visitId = null;
+    if (typeof specimenName === 'undefined') specimenName = null;
     document.getElementById('result-entry-order-id').value = orderId;
     document.getElementById('result-entry-test-id').value = testId;
     document.getElementById('result-entry-visit-id').value = visitId || '';
     document.getElementById('result-entry-test-name').textContent = testName;
+
+    const specBadge = document.getElementById('result-entry-specimen-badge');
+    if (specBadge) {
+      if (specimenName) {
+        specBadge.textContent = 'Specimen: ' + specimenName;
+        specBadge.style.display = 'inline-block';
+      } else {
+        specBadge.textContent = '';
+        specBadge.style.display = 'none';
+      }
+    }
 
     const isEdit = existingVal !== null && existingVal !== undefined && existingVal !== '';
     document.getElementById('result-entry-is-edit').value = isEdit ? '1' : '0';

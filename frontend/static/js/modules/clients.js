@@ -814,15 +814,16 @@
       pending.forEach(o => {
             const resValStr = (o.results && o.results.length > 0) ? (o.results[0].result_value || '') : '';
             const resUnitStr = (o.results && o.results.length > 0 && o.results[0].result_unit) ? o.results[0].result_unit : '';
+            const specBadge = o.specimen_name ? `<br><small style="color: #0369a1; background: #e0f2fe; padding: 1px 5px; border-radius: 3px; font-size: 0.75rem;">${this.escape(o.specimen_name)}</small>` : '';
             html += `
               <tr>
                 <td style="text-align:center; padding:8px; border-bottom:1px solid #ddd;">
                   <input type="checkbox" class="pending-order-checkbox" value="${o.order_id}" onchange="app.onPendingOrderSelectionChange()">
                 </td>
-                <td style="padding:8px; border-bottom:1px solid #ddd;"><strong>${this.escape(o.test_name)}</strong><br><small style="color:var(--text-muted);">Order ID: ${o.order_id}</small></td>
+                <td style="padding:8px; border-bottom:1px solid #ddd;"><strong>${this.escape(o.test_name)}</strong>${specBadge}<br><small style="color:var(--text-muted);">Order ID: ${o.order_id}</small></td>
                 <td style="padding:8px; border-bottom:1px solid #ddd;">${o.ordered_at}</td>
                 <td style="padding:8px; border-bottom:1px solid #ddd; text-align:right;">
-                  <button type="button" class="btn btn-primary btn-sm btn-pending-order-action" data-order-id="${o.order_id}" data-test-id="${o.test_id}" data-test-name="${this.escape(o.test_name)}" data-existing-val="${this.escape(resValStr)}" data-existing-unit="${this.escape(resUnitStr)}" data-visit-id="${o.visit_id || ''}">
+                  <button type="button" class="btn btn-primary btn-sm btn-pending-order-action" data-order-id="${o.order_id}" data-test-id="${o.test_id}" data-test-name="${this.escape(o.test_name)}" data-existing-val="${this.escape(resValStr)}" data-existing-unit="${this.escape(resUnitStr)}" data-visit-id="${o.visit_id || ''}" data-specimen-name="${this.escape(o.specimen_name || '')}">
                     ${o.results && o.results.length > 0 ? 'Edit Result' : 'Enter Result'}
                   </button>
                   <button type="button" class="btn btn-danger btn-sm btn-pending-order-remove" data-order-id="${o.order_id}">Remove</button>
@@ -842,7 +843,8 @@
               const exVal = this.getAttribute('data-existing-val') || '';
               const exUnit = this.getAttribute('data-existing-unit') || '';
               const vId = parseInt(this.getAttribute('data-visit-id'), 10) || null;
-              self.showEnterResultModal(oId, tId, tName, exVal, exUnit, vId);
+              const specName = this.getAttribute('data-specimen-name') || null;
+              self.showEnterResultModal(oId, tId, tName, exVal, exUnit, vId, specName);
             };
           });
           container.querySelectorAll('.btn-pending-order-remove').forEach(btn => {
@@ -1458,21 +1460,23 @@
                   </div>
                 `;
               } else if (o.status === 'completed') {
-                actionBtns = `<button type="button" class="btn btn-secondary btn-sm btn-edit-order-res" style="padding:4px 8px; font-size:0.78rem;" data-order-id="${o.order_id}" data-test-id="${o.test_id}" data-test-name="${this.escape(o.test_name)}" data-existing-val="${this.escape(existingValStr)}" data-existing-unit="${this.escape(existingUnitStr)}" data-visit-id="${visitId}">Edit</button>`;
+                actionBtns = `<button type="button" class="btn btn-secondary btn-sm btn-edit-order-res" style="padding:4px 8px; font-size:0.78rem;" data-order-id="${o.order_id}" data-test-id="${o.test_id}" data-test-name="${this.escape(o.test_name)}" data-existing-val="${this.escape(existingValStr)}" data-existing-unit="${this.escape(existingUnitStr)}" data-visit-id="${visitId}" data-specimen-name="${this.escape(o.specimen_name || '')}">Edit</button>`;
               } else {
-                actionBtns = `<button type="button" class="btn btn-primary btn-sm btn-edit-order-res" style="padding:4px 8px; font-size:0.78rem;" data-order-id="${o.order_id}" data-test-id="${o.test_id}" data-test-name="${this.escape(o.test_name)}" data-existing-val="" data-existing-unit="" data-visit-id="${visitId}">Enter</button>`;
+                actionBtns = `<button type="button" class="btn btn-primary btn-sm btn-edit-order-res" style="padding:4px 8px; font-size:0.78rem;" data-order-id="${o.order_id}" data-test-id="${o.test_id}" data-test-name="${this.escape(o.test_name)}" data-existing-val="" data-existing-unit="" data-visit-id="${visitId}" data-specimen-name="${this.escape(o.specimen_name || '')}">Enter</button>`;
               }
             } else {
               if (o.status === 'pending') {
-                actionBtns = `<button type="button" class="btn btn-primary btn-sm btn-edit-order-res" style="padding:4px 8px; font-size:0.78rem;" data-order-id="${o.order_id}" data-test-id="${o.test_id}" data-test-name="${this.escape(o.test_name)}" data-existing-val="" data-existing-unit="" data-visit-id="${visitId}">Enter</button>`;
+                actionBtns = `<button type="button" class="btn btn-primary btn-sm btn-edit-order-res" style="padding:4px 8px; font-size:0.78rem;" data-order-id="${o.order_id}" data-test-id="${o.test_id}" data-test-name="${this.escape(o.test_name)}" data-existing-val="" data-existing-unit="" data-visit-id="${visitId}" data-specimen-name="${this.escape(o.specimen_name || '')}">Enter</button>`;
               } else {
-                actionBtns = `<button type="button" class="btn btn-secondary btn-sm btn-edit-order-res" style="padding:4px 8px; font-size:0.78rem;" data-order-id="${o.order_id}" data-test-id="${o.test_id}" data-test-name="${this.escape(o.test_name)}" data-existing-val="${this.escape(existingValStr)}" data-existing-unit="${this.escape(existingUnitStr)}" data-visit-id="${visitId}">Edit</button>`;
+                actionBtns = `<button type="button" class="btn btn-secondary btn-sm btn-edit-order-res" style="padding:4px 8px; font-size:0.78rem;" data-order-id="${o.order_id}" data-test-id="${o.test_id}" data-test-name="${this.escape(o.test_name)}" data-existing-val="${this.escape(existingValStr)}" data-existing-unit="${this.escape(existingUnitStr)}" data-visit-id="${visitId}" data-specimen-name="${this.escape(o.specimen_name || '')}">Edit</button>`;
               }
             }
 
+            const specLabel = o.specimen_name ? `<br><small style="color: #0369a1; background: #e0f2fe; padding: 1px 5px; border-radius: 3px; font-size: 0.72rem;">${this.escape(o.specimen_name)}</small>` : '';
+
             oHtml += `
               <tr style="border-bottom:1px solid #f1f5f9;">
-                <td style="padding:8px 10px;"><strong>${this.escape(o.test_name)}</strong></td>
+                <td style="padding:8px 10px;"><strong>${this.escape(o.test_name)}</strong>${specLabel}</td>
                 <td style="padding:8px 10px; color:var(--text-muted); font-size:0.82rem;">${this.escape(o.section_name || '—')}</td>
                 <td style="padding:8px 10px; color:var(--text-muted); font-size:0.82rem;">${refRangeText}</td>
                 <td style="padding:8px 10px;">${resVal}</td>
@@ -1501,7 +1505,8 @@
               const exVal = this.getAttribute('data-existing-val') || '';
               const exUnit = this.getAttribute('data-existing-unit') || '';
               const vId = parseInt(this.getAttribute('data-visit-id'), 10) || null;
-              self.showEnterResultModal(oId, tId, tName, exVal, exUnit, vId);
+              const specName = this.getAttribute('data-specimen-name') || null;
+              self.showEnterResultModal(oId, tId, tName, exVal, exUnit, vId, specName);
             };
           });
         }

@@ -10,90 +10,105 @@ SPECIMEN_TYPES = [
         'name': 'EDTA Whole Blood',
         'container': 'Lavender / Purple Top (K2/K3 EDTA)',
         'min_volume': '2.0 mL',
+        'storage_temp': '2 - 8°C (Refrigerated)',
         'sort_order': 1
     },
     {
         'name': 'Sodium Citrate Whole Blood',
         'container': 'Light Blue Top (3.2% Citrate, 9:1 ratio)',
         'min_volume': '1.8 - 2.7 mL',
+        'storage_temp': '20 - 25°C (Room Temp)',
         'sort_order': 2
     },
     {
         'name': 'Blood (for Culture)',
         'container': 'SPS Culture Bottles (Adult/Pediatric Broth)',
         'min_volume': '8.0 - 10.0 mL',
+        'storage_temp': '35 - 37°C (Incubator)',
         'sort_order': 3
     },
     {
         'name': 'Capillary / Fingerstick Blood',
         'container': 'Capillary Lancet / Microtainer',
         'min_volume': '10 - 50 µL',
+        'storage_temp': '20 - 25°C (Room Temp)',
         'sort_order': 4
     },
     {
         'name': 'Serum (Red Top)',
         'container': 'Plain Red Top Silica Clot Activator',
         'min_volume': '4.0 - 5.0 mL',
+        'storage_temp': '2 - 8°C (Refrigerated)',
         'sort_order': 5
     },
     {
         'name': 'Serum (SST / Gel Separator)',
         'container': 'Gold SST Tube (Gel Barrier)',
         'min_volume': '4.0 - 5.0 mL',
+        'storage_temp': '2 - 8°C (Refrigerated)',
         'sort_order': 6
     },
     {
         'name': 'Plasma (Lithium Heparin)',
         'container': 'Green Top (Lithium Heparin)',
         'min_volume': '4.0 - 5.0 mL',
+        'storage_temp': '2 - 8°C (Refrigerated)',
         'sort_order': 7
     },
     {
         'name': 'Plasma (Fluoride / Oxalate)',
         'container': 'Grey Top (Sodium Fluoride / Potassium Oxalate)',
         'min_volume': '2.0 mL',
+        'storage_temp': '2 - 8°C (Refrigerated)',
         'sort_order': 8
     },
     {
         'name': 'Clean-Catch Midstream Urine',
         'container': 'Sterile Wide-Mouth Container',
         'min_volume': '10.0 - 20.0 mL',
+        'storage_temp': '2 - 8°C (Refrigerated)',
         'sort_order': 9
     },
     {
         'name': 'Random Stool / Feces',
         'container': 'Clean Dry Stool Container with Scoop Cap',
         'min_volume': '5.0 - 10.0 g',
+        'storage_temp': '2 - 8°C (Refrigerated)',
         'sort_order': 10
     },
     {
         'name': 'Cerebrospinal Fluid (CSF)',
         'container': '3x Sterile Plain Screw-Cap Tubes (No Additives)',
         'min_volume': '1.0 - 2.0 mL / tube',
+        'storage_temp': '20 - 25°C (Prompt Analysis)',
         'sort_order': 11
     },
     {
         'name': 'Sputum',
         'container': 'Sterile Wide-Mouth Screw-Cap Container',
         'min_volume': '3.0 - 5.0 mL',
+        'storage_temp': '2 - 8°C (Refrigerated)',
         'sort_order': 12
     },
     {
         'name': 'Swab (Wound / Throat / Pus / Urogenital)',
         'container': 'Sterile Swab in Amies / Stuart Transport Medium',
         'min_volume': 'Swab tip coated',
+        'storage_temp': '2 - 8°C (Refrigerated)',
         'sort_order': 13
     },
     {
         'name': 'Oral Fluid / Saliva',
         'container': 'Collection Spatula / Developer Vial',
         'min_volume': '1 oral swab',
+        'storage_temp': '20 - 25°C (Room Temp)',
         'sort_order': 14
     },
     {
         'name': 'Fine Needle Aspirate (FNA) / Tissue Biopsy',
         'container': '95% Ethanol Smears / 10% Neutral Formalin Jar',
         'min_volume': 'Varies',
+        'storage_temp': '20 - 25°C (Room Temp)',
         'sort_order': 15
     }
 ]
@@ -479,16 +494,16 @@ def seed_specimens(cur):
         row = cur.fetchone()
         if not row:
             cur.execute("""
-                INSERT INTO specimen_types (name, container, min_volume, sort_order)
-                VALUES (?, ?, ?, ?)
-            """, (s["name"], s.get("container"), s.get("min_volume"), s.get("sort_order", 0)))
+                INSERT INTO specimen_types (name, container, min_volume, storage_temp, sort_order)
+                VALUES (?, ?, ?, ?, ?)
+            """, (s["name"], s.get("container"), s.get("min_volume"), s.get("storage_temp"), s.get("sort_order", 0)))
         else:
             row_id = row["id"] if isinstance(row, dict) or hasattr(row, '__getitem__') else row[0]
             cur.execute("""
                 UPDATE specimen_types
-                SET container = ?, min_volume = ?, sort_order = ?
+                SET container = ?, min_volume = ?, storage_temp = ?, sort_order = ?
                 WHERE id = ?
-            """, (s.get("container"), s.get("min_volume"), s.get("sort_order", 0), row_id))
+            """, (s.get("container"), s.get("min_volume"), s.get("storage_temp"), s.get("sort_order", 0), row_id))
 
 
 def seed_database(conn=None):

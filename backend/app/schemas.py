@@ -192,10 +192,19 @@ class SpecimenTypeBase(BaseModel):
     name: str
     container: Optional[str] = None
     min_volume: Optional[str] = None
+    storage_temp: Optional[str] = None
     sort_order: int = 0
 
 class SpecimenTypeCreate(SpecimenTypeBase):
     pass
+
+class SpecimenTypeUpdate(BaseModel):
+    name: Optional[str] = None
+    container: Optional[str] = None
+    min_volume: Optional[str] = None
+    storage_temp: Optional[str] = None
+    sort_order: Optional[int] = None
+    is_active: Optional[bool] = None
 
 class SpecimenTypeResponse(SpecimenTypeBase):
     id: int

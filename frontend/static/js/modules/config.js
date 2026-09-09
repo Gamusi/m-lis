@@ -151,6 +151,21 @@
 
       <details class="card" style="margin-bottom: 16px;">
         <summary class="card-header" style="cursor: pointer; list-style: none;">
+          <span class="card-title">${this.icon('test-tube')} Specimen Configuration</span>
+        </summary>
+        <div style="padding: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+            <button class="btn btn-primary" onclick="app.showAddSpecimenModal()">${this.icon('plus')} Add Specimen Type</button>
+            <input type="text" id="specimen-config-search" placeholder="Search specimen types..." oninput="app.filterSpecimensTable()" style="padding: 7px 12px; border: 1px solid var(--border-color); border-radius: 4px; min-width: 260px; font-size: 0.85rem;">
+          </div>
+          <div id="specimens-table-container">
+            <p style="color: var(--text-muted);">Loading specimen types...</p>
+          </div>
+        </div>
+      </details>
+
+      <details class="card" style="margin-bottom: 16px;">
+        <summary class="card-header" style="cursor: pointer; list-style: none;">
           <span class="card-title">${this.icon('bed')} Wards Configuration</span>
         </summary>
         <div style="padding: 16px;">
@@ -196,6 +211,7 @@
     yield this.loadFacilityConfig();
     yield this.loadConfigData();
     yield this.loadReferenceRangesConfig();
+    yield this.loadSpecimensConfig();
     yield this.loadWardsConfig();
     yield this.loadCliniciansConfig();
   }),
@@ -260,6 +276,219 @@
 
 
   
+  loadSpecimensConfig: __async(function*() {
+    try {
+      const res = yield fetch('/api/config/specimens?active_only=false');
+      if (!res.ok) throw new Error('API returned ' + res.status);
+      const specimens = yield res.json();
+      this.specimensList = specimens;
+      let rows = '';
+      specimens.forEach(s => {
+        const tempBadge = s.storage_temp ? `<span style="display: inline-block; padding: 2px 6px; border-radius: 4px; background: #e0f2fe; color: #0369a1; font-size: 0.8rem; font-weight: 500;">${this.escape(s.storage_temp)}</span>` : '<span style="color:var(--text-muted); font-size:0.85rem;">—</span>';
+        const volBadge = s.min_volume ? `<span style="font-size: 0.85rem; color: #475569;">${this.escape(s.min_volume)}</span>` : '<span style="color:var(--text-muted); font-size:0.85rem;">—</span>';
+        const containerBadge = s.container ? `<span style="font-size: 0.85rem;">${this.escape(s.container)}</span>` : '<span style="color:var(--text-muted); font-size:0.85rem;">—</span>';
+        const statusBadge = s.is_active ? '<span style="color:green; font-weight:600;">Active</span>' : '<span style="color:red; font-weight:600;">Inactive</span>';
+        const safeName = this.escape(s.name || '').replace(/'/g, "\\'");
+        const safeContainer = this.escape(s.container || '').replace(/'/g, "\\'");
+        const safeVol = this.escape(s.min_volume || '').replace(/'/g, "\\'");
+        const safeTemp = this.escape(s.storage_temp || '').replace(/'/g, "\\'");
+
+        rows += `
+          <tr data-specimen-id="${s.id}">
+            <td><strong>${this.escape(s.name)}</strong></td>
+            <td>${containerBadge}</td>
+            <td>${volBadge}</td>
+            <td>${tempBadge}</td>
+            <td style="text-align: center;">${s.sort_order || 0}</td>
+            <td>${statusBadge}</td>
+            <td>
+              <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.8rem;" onclick="app.editSpecimen(${s.id}, '${safeName}', '${safeContainer}', '${safeVol}', '${safeTemp}', ${s.sort_order || 0}, ${s.is_active ? 1 : 0})">Edit</button>
+              ${s.is_active
+                ? `<button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.8rem; color: var(--danger-color);" onclick="app.deleteSpecimen(${s.id}, '${safeName}')">Deactivate</button>`
+                : `<button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.8rem; color: green;" onclick="app.reactivateSpecimen(${s.id})">Reactivate</button>`
+              }
+            </td>
+          </tr>
+        `;
+      });
+      const container = document.getElementById('specimens-table-container');
+      if (container) {
+        container.innerHTML = `
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Specimen Name</th>
+                <th>Primary Container / Tube</th>
+                <th>Min Volume</th>
+                <th>Storage Temp</th>
+                <th style="width: 80px; text-align: center;">Order</th>
+                <th style="width: 90px;">Status</th>
+                <th style="width: 170px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>${rows || '<tr><td colspan="7" style="text-align:center; color:var(--text-muted);">No specimen types configured.</td></tr>'}</tbody>
+          </table>
+        `;
+      }
+    } catch(e) {
+      console.error('Specimen config load error:', e);
+      const container = document.getElementById('specimens-table-container');
+      if (container) container.innerHTML = '<p style="color:var(--danger-color);">Error loading specimen types.</p>';
+    }
+  }),
+
+  filterSpecimensTable: function() {
+    const searchEl = document.getElementById('specimen-config-search');
+    const q = (searchEl ? searchEl.value : '').toLowerCase().trim();
+    const rows = document.querySelectorAll('#specimens-table-container tbody tr');
+    rows.forEach(r => {
+      const text = r.textContent.toLowerCase();
+      r.style.display = (q === '' || text.includes(q)) ? '' : 'none';
+    });
+  },
+
+  showAddSpecimenModal: function() {
+    const titleEl = document.getElementById('specimen-modal-title');
+    if (titleEl) titleEl.textContent = 'Add Specimen Type';
+    document.getElementById('specimen-modal-id').value = '';
+    document.getElementById('specimen-modal-active').value = '1';
+    document.getElementById('specimen-modal-name').value = '';
+    document.getElementById('specimen-modal-container').value = '';
+    document.getElementById('specimen-modal-min-volume').value = '';
+    document.getElementById('specimen-modal-storage-temp').value = '';
+    document.getElementById('specimen-modal-sort-order').value = '0';
+    this.openModal('specimen-modal');
+    document.getElementById('specimen-modal-name').focus();
+  },
+
+  editSpecimen: function(id, name, container, minVolume, storageTemp, sortOrder, isActive) {
+    const titleEl = document.getElementById('specimen-modal-title');
+    if (titleEl) titleEl.textContent = 'Edit Specimen Type';
+    document.getElementById('specimen-modal-id').value = id;
+    document.getElementById('specimen-modal-active').value = isActive ? '1' : '0';
+    document.getElementById('specimen-modal-name').value = name || '';
+    document.getElementById('specimen-modal-container').value = container || '';
+    document.getElementById('specimen-modal-min-volume').value = minVolume || '';
+    document.getElementById('specimen-modal-storage-temp').value = storageTemp || '';
+    document.getElementById('specimen-modal-sort-order').value = sortOrder !== undefined ? sortOrder : 0;
+    this.openModal('specimen-modal');
+    document.getElementById('specimen-modal-name').focus();
+  },
+
+  submitSpecimenModal: __async(function*(e) {
+    e.preventDefault();
+    const id = document.getElementById('specimen-modal-id').value;
+    const name = document.getElementById('specimen-modal-name').value.trim();
+    const container = document.getElementById('specimen-modal-container').value.trim();
+    const minVolume = document.getElementById('specimen-modal-min-volume').value.trim();
+    const storageTemp = document.getElementById('specimen-modal-storage-temp').value.trim();
+    const sortOrder = parseInt(document.getElementById('specimen-modal-sort-order').value, 10) || 0;
+    const isActive = document.getElementById('specimen-modal-active').value === '1';
+
+    if (!name) {
+      this.showNotificationModal("Validation Error", "Specimen name is required.", true);
+      return;
+    }
+
+    const payload = {
+      name: name,
+      container: container || null,
+      min_volume: minVolume || null,
+      storage_temp: storageTemp || null,
+      sort_order: sortOrder,
+      is_active: isActive
+    };
+
+    try {
+      let res;
+      if (id) {
+        res = yield fetch(`/api/config/specimens/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        res = yield fetch('/api/config/specimens', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      }
+
+      if (res.ok) {
+        this.closeModal('specimen-modal');
+        yield this.loadSpecimensConfig();
+        this.showNotificationModal("Success", `Specimen type '${name}' saved successfully.`, false);
+      } else {
+        const err = yield res.json();
+        this.showNotificationModal("Error", (err && err.detail) ? err.detail : "Failed to save specimen type.", true);
+      }
+    } catch(err) {
+      console.error('Error saving specimen:', err);
+      this.showNotificationModal("Error", "Network error saving specimen type.", true);
+    }
+  }),
+
+  deleteSpecimen: __async(function*(id, name) {
+    try {
+      const usageRes = yield fetch(`/api/config/specimens/${id}/usage`);
+      if (!usageRes.ok) throw new Error('Failed to fetch specimen usage');
+      const usage = yield usageRes.json();
+
+      if (usage.has_active_orders) {
+        this.showNotificationModal(
+          "Cannot Deactivate Specimen",
+          `Cannot deactivate '${name}' because it is currently referenced by ${usage.pending_orders_count} pending test order(s). Please complete or reassign those orders first.`,
+          true
+        );
+        return;
+      }
+
+      let warningMsg = `Are you sure you want to deactivate specimen type '${name}'? It will be hidden from new order workflows.`;
+      if (usage.total_orders_count > 0 || usage.visits_count > 0) {
+        warningMsg = `Specimen type '${name}' is referenced in ${usage.total_orders_count} historical order(s) and ${usage.visits_count} visit(s). Deactivating will safely preserve historical records while hiding it from future test orders. Proceed?`;
+      }
+
+      app.confirmAction("Confirm Deactivation", warningMsg, __async(function*() {
+        try {
+          const res = yield fetch(`/api/config/specimens/${id}`, { method: 'DELETE' });
+          if (res.ok) {
+            yield app.loadSpecimensConfig();
+            app.showNotificationModal("Success", `Specimen type '${name}' deactivated.`, false);
+          } else {
+            const err = yield res.json();
+            app.showNotificationModal("Error", (err && err.detail) ? err.detail : "Failed to deactivate specimen.", true);
+          }
+        } catch(e) {
+          app.showNotificationModal("Error", "Network error deactivating specimen.", true);
+        }
+      }));
+    } catch(e) {
+      console.error('Usage check failed:', e);
+      this.showNotificationModal("Error", "Failed to verify specimen usage before deactivation.", true);
+    }
+  }),
+
+  reactivateSpecimen: __async(function*(id) {
+    try {
+      const res = yield fetch(`/api/config/specimens/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: true })
+      });
+      if (res.ok) {
+        yield this.loadSpecimensConfig();
+        this.showNotificationModal("Success", "Specimen type reactivated successfully.", false);
+      } else {
+        const err = yield res.json();
+        this.showNotificationModal("Error", (err && err.detail) ? err.detail : "Failed to reactivate specimen.", true);
+      }
+    } catch(e) {
+      console.error('Reactivation error:', e);
+      this.showNotificationModal("Error", "Network error reactivating specimen.", true);
+    }
+  }),
+
   loadWardsConfig: __async(function*() {
     try {
       const res = yield fetch('/api/config/wards');

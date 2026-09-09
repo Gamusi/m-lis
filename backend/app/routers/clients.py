@@ -1143,12 +1143,14 @@ def get_client_orders(client_id: int, conn: sqlite3.Connection = Depends(get_db)
         SELECT 
             o.id as order_id, o.sample_id, o.ordered_at, o.status,
             o.visit_id, v.ward_of_origin, v.lab_number,
+            o.specimen_type_id, st.name as specimen_name,
             t.id as test_id, t.name as test_name, t.is_tracked, s.name as section_name,
             u.full_name as technician_name
         FROM test_orders o
         JOIN visits v ON o.visit_id = v.id
         JOIN tests t ON o.test_id = t.id
         JOIN sections s ON t.section_id = s.id
+        LEFT JOIN specimen_types st ON o.specimen_type_id = st.id
         LEFT JOIN users u ON o.ordered_by_user_id = u.id
         WHERE v.client_id = ? AND v.is_deleted = 0
         ORDER BY o.id DESC
@@ -1195,11 +1197,13 @@ def get_visit_details(visit_id: int, conn: sqlite3.Connection = Depends(get_db),
         SELECT 
             v.id as visit_id, v.ward_of_origin, v.lab_number, v.created_at,
             v.dispatched_at, v.dispatched_to, v.dispatched_by_user_id,
+            v.specimen_type_id, st_v.name as visit_specimen_name,
             c.id as client_id, c.client_number, c.full_name, c.date_of_birth, c.age_years, c.sex, c.phone,
             cl.id as clinician_id, cl.name as clinician_name,
             u_disp.full_name as dispatched_by_name
         FROM visits v
         JOIN clients c ON v.client_id = c.id
+        LEFT JOIN specimen_types st_v ON v.specimen_type_id = st_v.id
         LEFT JOIN clinicians cl ON v.clinician_id = cl.id
         LEFT JOIN users u_disp ON v.dispatched_by_user_id = u_disp.id
         WHERE v.id = ? AND v.is_deleted = 0
@@ -1211,11 +1215,13 @@ def get_visit_details(visit_id: int, conn: sqlite3.Connection = Depends(get_db),
     cur.execute("""
         SELECT 
             o.id as order_id, o.sample_id, o.ordered_at, o.status, o.order_category,
+            o.specimen_type_id, st.name as specimen_name,
             t.id as test_id, t.name as test_name, t.is_tracked, t.ref_range, t.default_unit, t.secondary_unit, t.result_type, s.name as section_name,
             u.full_name as ordered_by_name
         FROM test_orders o
         JOIN tests t ON o.test_id = t.id
         JOIN sections s ON t.section_id = s.id
+        LEFT JOIN specimen_types st ON o.specimen_type_id = st.id
         LEFT JOIN users u ON o.ordered_by_user_id = u.id
         WHERE o.visit_id = ?
         ORDER BY o.id ASC

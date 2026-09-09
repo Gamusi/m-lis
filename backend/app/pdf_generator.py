@@ -910,7 +910,7 @@ def _build_cbc_patient_header(order_data: dict) -> Table:
         sex = "F"
     lab_no = str(order_data.get("lab_number") or "")
     ward = str(order_data.get("ward_of_origin") or "OPD")
-    specimen = "EDTA Whole Blood"
+    specimen = str(order_data.get("specimen") or "EDTA Whole Blood")
     
     data = [
         ["Client No :", client_no, "Name :", name, "Lab No :", lab_no],

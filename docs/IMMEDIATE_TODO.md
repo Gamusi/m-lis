@@ -11,7 +11,7 @@ This document tracks high-priority features, infrastructure hardening, and techn
   - Naming pattern: mlis_backup_YYYY-MM-DD_HHMMSS.db.
   - Verification: Perform test restore integrity check before archiving snapshot.
 
-## 2. Specimen Configuration & Management
+## 2. Specimen Configuration & Management [COMPLETED]
 - **Priority**: High (Laboratory Workflow & Quality Assurance)
 - **Objective**: Provide a dedicated configuration interface for specimen types, collection containers, minimum volumes, and test-to-specimen compatibility rules.
 - **Requirements**:
@@ -21,11 +21,12 @@ This document tracks high-priority features, infrastructure hardening, and techn
   - Linkage matrix mapping tests and panels to compatible specimen types to prevent invalid orders at accessioning.
   - Soft-deactivation protection preventing removal of specimen types referenced by existing clinical orders.
 
-## 3. Hematology Analyzer Parser Output Hardcoding & Failure Handling
+## 3. Hematology Analyzer Parser Output Hardcoding & Failure Handling [COMPLETED]
 - **Priority**: High (Interoperability & Data Ingestion)
 - **Objective**: Generalize the hematology analyzer parser to handle varied message formats, delimiters, field offsets, and edge cases.
 - **Requirements**:
   - Investigate analyzer parser logic across differing output modes / firmware formats.
   - Collect sample raw payload dumps from failing analyzer outputs.
   - Remove brittle hardcoded field index parsing; introduce resilient header/segment regex matching and graceful fallback error reporting.
+
 

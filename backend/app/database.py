@@ -159,6 +159,7 @@ SCHEMA_SQL = """
         name TEXT UNIQUE NOT NULL,
         container TEXT,
         min_volume TEXT,
+        storage_temp TEXT,
         is_active BOOLEAN NOT NULL DEFAULT 1,
         sort_order INTEGER DEFAULT 0
     );
@@ -545,7 +546,8 @@ def init_db():
         ("daily_entries", "self_request", "INTEGER NOT NULL DEFAULT 0"),
         ("visits", "dispatched_at", "DATETIME"),
         ("visits", "dispatched_to", "TEXT"),
-        ("visits", "dispatched_by_user_id", "INTEGER REFERENCES users(id)")
+        ("visits", "dispatched_by_user_id", "INTEGER REFERENCES users(id)"),
+        ("specimen_types", "storage_temp", "TEXT")
     ]
     for table, col, col_def in migrations:
         try:
