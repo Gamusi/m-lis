@@ -31,7 +31,7 @@
               <button class="btn btn-secondary btn-sm" onclick="app.openBacklogCoverageModal()" title="View Coverage Calendar">
                 ${this.icon('calendar')} Coverage Status
               </button>
-              <button type="button" class="btn btn-secondary btn-sm" onclick="app.loadBacklogData(document.getElementById('backlog-date').value)" title="Discard uncommitted changes">Reset Changes</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="app.checkBacklogUnsavedChanges(() => app.loadBacklogData(document.getElementById('backlog-date').value))" title="Discard uncommitted changes">Reset Changes</button>
               <button type="button" id="btn-save-backlog" class="btn btn-primary btn-sm" onclick="app.saveBacklogData()" style="padding: 6px 14px; font-weight: 600;" title="Save backlog entries (Ctrl+S)">
                 ${this.icon('save')} Save Backlog Entries
               </button>
@@ -41,11 +41,17 @@
 
         <!-- Filters Bar -->
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; background: #F8FAFC; border: 1px solid var(--border-color); border-radius: 6px; padding: 10px 14px; margin-bottom: 16px;">
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <label for="backlog-section-filter" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">Section:</label>
-            <select id="backlog-section-filter" onchange="app.filterBacklogTable()" style="padding: 4px 8px; font-size: 0.85rem; border: 1px solid var(--border-color); border-radius: 4px;">
-              <option value="all">All Sections</option>
-            </select>
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <label for="backlog-section-filter" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">Section:</label>
+              <select id="backlog-section-filter" onchange="app.filterBacklogTable()" style="padding: 4px 8px; font-size: 0.85rem; border: 1px solid var(--border-color); border-radius: 4px;">
+                <option value="all">All Sections</option>
+              </select>
+            </div>
+            <div class="btn-group" style="display: flex; gap: 4px;">
+              <button type="button" class="btn btn-secondary btn-sm" style="padding: 3px 8px; font-size: 0.78rem;" onclick="app.toggleAllBacklogSections(true)" title="Expand all sections">Expand All</button>
+              <button type="button" class="btn btn-secondary btn-sm" style="padding: 3px 8px; font-size: 0.78rem;" onclick="app.toggleAllBacklogSections(false)" title="Collapse all sections">Collapse All</button>
+            </div>
           </div>
           <input type="text" id="backlog-search" placeholder="Search tests..." onkeyup="app.filterBacklogTable()" style="padding: 4px 8px; font-size: 0.85rem; width: 180px; border: 1px solid var(--border-color); border-radius: 4px;">
         </div>
@@ -53,7 +59,7 @@
         <!-- Summary KPI Banner -->
         <div id="backlog-summary-container" style="background: var(--bg-color); padding: 12px 16px; margin-bottom: 20px; border-radius: 6px; display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 16px; border: 1px solid var(--border-color);">
           <div><span style="color: var(--text-muted); font-size: 0.8rem; display: block;">Total Tests Done</span><strong style="font-size: 1.2rem; color: var(--primary-color);" id="backlog-summary-done">0</strong></div>
-          <div><span style="color: var(--text-muted); font-size: 0.8rem; display: block;">Tracked Findings</span><strong style="font-size: 1.2rem; color: #DC2626;" id="backlog-summary-pos">0</strong></div>
+          <div><span style="color: var(--text-muted); font-size: 0.8rem; display: block;">Positive / Abnormal</span><strong style="font-size: 1.2rem; color: #DC2626;" id="backlog-summary-pos">0</strong></div>
           <div><span style="color: var(--text-muted); font-size: 0.8rem; display: block;">In-House</span><strong style="font-size: 1.2rem; color: #2563EB;" id="backlog-summary-inhouse">0</strong></div>
           <div><span style="color: var(--text-muted); font-size: 0.8rem; display: block;">Referrals</span><strong style="font-size: 1.2rem; color: #D97706;" id="backlog-summary-ref">0</strong></div>
           <div><span style="color: var(--text-muted); font-size: 0.8rem; display: block;">Outreach</span><strong style="font-size: 1.2rem; color: #059669;" id="backlog-summary-outreach">0</strong></div>
@@ -69,16 +75,53 @@
     yield this.loadBacklogData(curDate);
   }),
 
+  _backlogIsDirty: false,
+
+  setBacklogDirty: function(dirty) {
+    this._backlogIsDirty = !!dirty;
+    const saveBtn = document.getElementById('btn-save-backlog');
+    if (saveBtn) {
+      if (this._backlogIsDirty) {
+        saveBtn.classList.remove('btn-primary');
+        saveBtn.classList.add('btn-warning');
+        saveBtn.innerHTML = `${this.icon('save')} Save Backlog Entries *`;
+      } else {
+        saveBtn.classList.remove('btn-warning');
+        saveBtn.classList.add('btn-primary');
+        saveBtn.innerHTML = `${this.icon('save')} Save Backlog Entries`;
+      }
+    }
+  },
+
+  checkBacklogUnsavedChanges: function(callback) {
+    if (!this._backlogIsDirty) {
+      callback();
+      return;
+    }
+    this.confirmAction(
+      "Unsaved Changes",
+      "You have unsaved backlog entries. Switching date or resetting will discard them. Discard changes?",
+      () => {
+        this.setBacklogDirty(false);
+        callback();
+      }
+    );
+  },
+
   onBacklogDateChange: function(dateVal) {
-    this._backlogDate = dateVal;
-    this.loadBacklogData(dateVal);
+    this.checkBacklogUnsavedChanges(() => {
+      this._backlogDate = dateVal;
+      this.loadBacklogData(dateVal);
+    });
   },
 
   setBacklogDate: function(dateVal) {
-    this._backlogDate = dateVal;
-    const inp = document.getElementById('backlog-date');
-    if (inp) inp.value = dateVal;
-    this.loadBacklogData(dateVal);
+    this.checkBacklogUnsavedChanges(() => {
+      this._backlogDate = dateVal;
+      const inp = document.getElementById('backlog-date');
+      if (inp) inp.value = dateVal;
+      this.loadBacklogData(dateVal);
+    });
   },
 
   shiftBacklogDate: function(offset, isYesterday) {
@@ -93,11 +136,17 @@
       target = new Date();
     }
     const dStr = target.toISOString().split('T')[0];
-    if (inp) inp.value = dStr;
     this.setBacklogDate(dStr);
   },
 
+  toggleAllBacklogSections: function(openState) {
+    document.querySelectorAll('.backlog-section-block').forEach(secBlock => {
+      secBlock.open = !!openState;
+    });
+  },
+
   loadBacklogData: __async(function*(dateStr) {
+    this.setBacklogDirty(false);
     const secContainer = document.getElementById('backlog-sections-container');
     if (!secContainer) return;
 
@@ -142,7 +191,6 @@
             <tr class="backlog-row" data-test-id="${tid}" data-section-id="${sec.section_id}" data-test-name="${this.escape(t.test_name).toLowerCase()}">
               <td>
                 <div style="font-weight: 600; color: var(--text-dark);">${this.escape(t.test_name)}</div>
-                ${t.is_tracked ? '<span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">(Tracked)</span>' : ''}
               </td>
               <td style="text-align: center;">
                 <input type="number" min="0" class="backlog-input backlog-input-inhouse" data-test-id="${tid}" value="${inHouse}" oninput="app.autoBalanceBacklogRow(${tid}, 'inhouse')" onkeydown="app.handleBacklogKeyNav(event, ${tid}, 'inhouse')" style="width: 70px; text-align: center; padding: 4px 6px; border: 1px solid #BFDBFE; border-radius: 4px; background: #EFF6FF;">
@@ -167,33 +215,35 @@
         });
 
         secContainer.innerHTML += `
-          <div class="backlog-section-block" data-section-id="${sec.section_id}" style="margin-bottom: 24px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); padding-bottom: 6px; margin-bottom: 8px;">
-              <h3 style="color: var(--primary-color); margin: 0; font-size: 1rem;">
-                ${this.escape(sec.section_name)}
-              </h3>
-              <div style="font-size: 0.8rem; color: var(--text-muted);">
-                Section Total: <strong id="sec-done-total-${sec.section_id}">0</strong> tests | 
-                <strong id="sec-pos-total-${sec.section_id}" style="color: #DC2626;">0</strong> findings
-              </div>
+          <details class="card backlog-section-block" data-section-id="${sec.section_id}" open style="margin-bottom: 16px;">
+            <summary class="card-header" style="cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+              <span class="card-title" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                ${this.icon('file-text')} Section: ${this.escape(sec.section_name)}
+              </span>
+              <span style="font-size: 0.85rem; font-weight: 500; color: var(--text-muted); background: #F1F5F9; padding: 3px 10px; border-radius: 4px; border: 1px solid var(--border-color);">
+                Total Done: <strong id="sec-done-total-${sec.section_id}" style="color: var(--primary-color);">0</strong> | 
+                Positive / Abnormal: <strong id="sec-pos-total-${sec.section_id}" style="color: #DC2626;">0</strong>
+              </span>
+            </summary>
+            <div style="padding: 16px;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Test Name</th>
+                    <th style="width: 85px; text-align: center;">In-House</th>
+                    <th style="width: 85px; text-align: center;">Referral</th>
+                    <th style="width: 85px; text-align: center;">Outreach</th>
+                    <th style="width: 85px; text-align: center;">Self-Req</th>
+                    <th style="width: 90px; text-align: center;">Total Done</th>
+                    <th style="width: 130px; text-align: center;">Positive / Abnormal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${rowsHtml}
+                </tbody>
+              </table>
             </div>
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Test Name</th>
-                  <th style="width: 85px; text-align: center;">In-House</th>
-                  <th style="width: 85px; text-align: center;">Referral</th>
-                  <th style="width: 85px; text-align: center;">Outreach</th>
-                  <th style="width: 85px; text-align: center;">Self-Req</th>
-                  <th style="width: 90px; text-align: center;">Total Done</th>
-                  <th style="width: 90px; text-align: center;">Pos / Finding</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${rowsHtml}
-              </tbody>
-            </table>
-          </div>
+          </details>
         `;
       });
 
@@ -230,6 +280,7 @@
     }
 
     this.recalcBacklogTotals();
+    this.setBacklogDirty(true);
   },
 
   recalcBacklogTotals: function() {
@@ -355,6 +406,9 @@
       });
 
       secBlock.style.display = (matchSection && visibleRows > 0) ? '' : 'none';
+      if (query && visibleRows > 0) {
+        secBlock.open = true;
+      }
     });
   },
 

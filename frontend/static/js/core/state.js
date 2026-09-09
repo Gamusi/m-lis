@@ -410,6 +410,17 @@ Object.assign(window.app, {
       this.showNotificationModal("Access Denied", "This tab requires Super Admin privileges.", true);
       return;
     }
+    if (this.currentView === 'backlog' && viewName !== 'backlog' && this._backlogIsDirty) {
+      this.confirmAction(
+        "Unsaved Changes",
+        "You have unsaved backlog entries. Leaving this tab will discard them. Discard changes?",
+        () => {
+          this.setBacklogDirty(false);
+          this.navigate(viewName);
+        }
+      );
+      return;
+    }
 
     this.currentView = viewName;
     document.querySelectorAll('.nav-tab').forEach(tab => {

@@ -910,7 +910,7 @@
                   >+</button>${this.escape(parent.name)}<span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 400; margin-left: 10px;">${count} parameter${count !== 1 ? 's' : ''}</span>
                 </td>
                 <td>Panel</td>
-                <td>${parent.is_tracked ? 'Tracked (Positives / Findings)' : 'Standard (Done Only)'}</td>
+                <td>${parent.is_tracked ? 'Tracked (Positive / Abnormal)' : 'Standard (Done Only)'}</td>
                 <td style="color: var(--text-muted); font-size: 0.8rem;">System panel</td>
               </tr>
             `;
@@ -923,7 +923,7 @@
                 <tr data-section-id="${secId}" data-section-name="${this.escape(secName.toLowerCase())}" data-parent-id="${parent.id}" style="display: none; background-color: #FAFAFA;">
                   <td style="padding-left: 40px; font-size: 0.9rem;">${this.escape(child.name)}</td>
                   <td>${this.escape(typeLabel)}</td>
-                  <td style="font-size: 0.85rem;">${child.is_tracked ? 'Tracked (Positives / Findings)' : 'Standard (Done Only)'}</td>
+                  <td style="font-size: 0.85rem;">${child.is_tracked ? 'Tracked (Positive / Abnormal)' : 'Standard (Done Only)'}</td>
                   <td>
                     <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.8rem;" onclick="app.openTestConfigModal(${child.id})">Edit</button>
                     <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.8rem; color: var(--danger-color);" onclick="app.deleteTest(${child.id})">Delete</button>
@@ -942,7 +942,7 @@
               <tr data-section-id="${secId}" data-section-name="${this.escape(secName.toLowerCase())}">
                 <td style="padding-left: 12px;"><strong>${this.escape(t.name)}</strong></td>
                 <td>${this.escape(typeLabel)}</td>
-                <td>${t.is_tracked ? 'Tracked (Positives / Findings)' : 'Standard (Done Only)'}</td>
+                <td>${t.is_tracked ? 'Tracked (Positive / Abnormal)' : 'Standard (Done Only)'}</td>
                 <td>
                   <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.8rem;" onclick="app.openTestConfigModal(${t.id})">Edit</button>
                   <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.8rem; color: var(--danger-color);" onclick="app.deleteTest(${t.id})">Delete</button>

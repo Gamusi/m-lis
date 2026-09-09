@@ -3,22 +3,28 @@ import datetime
 from typing import Optional, Dict, Any
 from .operations_analytics import calculate_date_range, format_reporting_period
 
-def is_order_surveillance_incident(test_name: str, results: list) -> bool:
+def is_order_surveillance_incident(test_name: str, results: list, crossmatches: list = None) -> bool:
     """
-    Determines if a completed test order represents a positive / incident case for surveillance.
-    - For quantitative Hematology (CBC): ONLY Critical Anemia (Hb < 8.0 g/dL) or panic/critical flags count.
-    - For infectious diseases & qualitative assays (Malaria, HIV, BAT, HBsAg, VDRL, Sickling, Widal): positive/reactive counts.
+    Determines if a completed test order represents a positive / incident / abnormal case for surveillance.
+    - For quantitative Hematology (CBC): Critical Anemia (Hb < 8.0 g/dL) or panic/critical/abnormal flags count.
     - For Urinalysis / Stool: positive/abnormal parameters count.
+    - For Crossmatch: any incompatible donor unit counts.
+    - For Blood HCG: >= 25 mIU/mL counts.
+    - For CD4: Absolute < 500 or < 200, CD4% < 25%, or RDT < 200 counts.
+    - For ASO Titer: >= 200 IU/mL counts.
+    - For EID: PCR or Rapid positive/detected counts.
+    - For infectious diseases & qualitative assays (Malaria, HIV, BAT, HBsAg, VDRL, Sickling, Widal): positive/reactive counts.
     """
     t_name_lower = (test_name or "").lower()
     
+    # 1. CBC / Hematology
     if "cbc" in t_name_lower or "blood count" in t_name_lower:
         for res in results:
             flag = (res["clinical_flag"] or "").strip().lower()
             p_name = (res["parameter_name"] or "").lower()
             val_str = str(res["result_value"] or "").strip()
             
-            if flag in ["l*", "h*", "critical", "panic", "critical low", "critical high"]:
+            if flag in ["l*", "h*", "critical", "panic", "critical low", "critical high", "abnormal", "h", "l"]:
                 return True
             
             if "hb" in p_name or "hemoglobin" in p_name:
@@ -30,6 +36,68 @@ def is_order_surveillance_incident(test_name: str, results: list) -> bool:
                     pass
         return False
 
+    # 2. Crossmatch & Compatibility testing
+    if crossmatches:
+        for cm in crossmatches:
+            c_stat = str(cm.get("compatibility_status") or "").upper()
+            if "INCOMPATIBLE" in c_stat or cm.get("failing_phase"):
+                return True
+
+    # 3. Blood HCG (>= 25 mIU/mL is positive)
+    if "hcg" in t_name_lower and ("blood" in t_name_lower or "serum" in t_name_lower or "b-hcg" in t_name_lower):
+        for res in results:
+            val_str = str(res["result_value"] or "").strip()
+            try:
+                val_num = float(val_str.split()[0].replace(">", "").replace("<", ""))
+                if val_num >= 25.0:
+                    return True
+            except (ValueError, TypeError):
+                if any(x in val_str.lower() for x in ["positive", "reactive"]):
+                    return True
+
+    # 4. CD4 (Absolute < 500 or < 200, CD4% < 25%, or RDT < 200)
+    if "cd4" in t_name_lower:
+        for res in results:
+            val_str = str(res["result_value"] or "").strip()
+            flag = (res["clinical_flag"] or "").strip().lower()
+            if flag in ["l", "l*", "critical", "panic", "abnormal"]:
+                return True
+            if "< 200" in val_str.lower() or "below 200" in val_str.lower():
+                return True
+            try:
+                num = float(val_str.replace("%", "").split()[0].replace(">", "").replace("<", ""))
+                if "percent" in t_name_lower or "%" in t_name_lower:
+                    if num < 25.0:
+                        return True
+                else:
+                    if num < 500.0:
+                        return True
+            except (ValueError, TypeError):
+                pass
+
+    # 5. ASO Titer (>= 200 IU/mL is abnormal/reactive)
+    if "aso" in t_name_lower:
+        for res in results:
+            val_str = str(res["result_value"] or "").strip()
+            flag = (res["clinical_flag"] or "").strip().lower()
+            if flag in ["h", "h*", "critical", "panic", "abnormal"]:
+                return True
+            try:
+                num = float(val_str.split()[0].replace(">", "").replace("<", ""))
+                if num >= 200.0:
+                    return True
+            except (ValueError, TypeError):
+                if any(x in val_str.lower() for x in ["positive", "reactive"]):
+                    return True
+
+    # 6. EID PCR & Rapid (Positive / Detected / Reactive)
+    if "eid" in t_name_lower:
+        for res in results:
+            val_str = str(res["result_value"] or "").strip().lower()
+            if any(x in val_str for x in ["positive", "detected", "reactive"]) and "not detected" not in val_str and "non-reactive" not in val_str:
+                return True
+
+    # 7. Default / Single tests
     for res in results:
         if res["is_positive"] == 1:
             return True
@@ -37,7 +105,7 @@ def is_order_surveillance_incident(test_name: str, results: list) -> bool:
         if val in ["positive", "abnormal", "reactive", "detected"] or val.startswith("positive") or val.startswith("reactive"):
             return True
         flag = (res["clinical_flag"] or "").strip().lower()
-        if flag in ["panic", "critical", "abnormal", "high", "h*", "l*"]:
+        if flag in ["panic", "critical", "abnormal", "high", "h*", "l*", "l", "h"]:
             return True
             
     return False
@@ -175,7 +243,14 @@ def calculate_surveillance_metrics(
         """, (oid,))
         results = cur.fetchall()
 
-        is_order_incident = is_order_surveillance_incident(row["test_name"], results)
+        cur.execute("""
+            SELECT compatibility_status
+            FROM donor_crossmatches
+            WHERE order_id = ?
+        """, (oid,))
+        cms = [dict(r) for r in cur.fetchall()]
+
+        is_order_incident = is_order_surveillance_incident(row["test_name"], results, cms)
 
         if is_order_incident:
             total_incident_cases += 1

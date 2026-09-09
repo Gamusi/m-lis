@@ -42,7 +42,7 @@
 
         <div id="daily-summary-container" style="background: var(--bg-color); padding: 12px; margin-bottom: 20px; border-radius: 6px; display: flex; gap: 32px; border: 1px solid var(--border-color);">
           <div><strong>Tests Done:</strong> <span id="summary-done">0</span></div>
-          <div><strong>Tracked Findings:</strong> <span id="summary-pos">0</span></div>
+          <div><strong>Positive / Abnormal:</strong> <span id="summary-pos">0</span></div>
           <div><strong>Pending Orders:</strong> <span id="summary-pending">0</span></div>
           <div><strong>Completed Orders:</strong> <span id="summary-completed">0</span></div>
         </div>
@@ -124,7 +124,7 @@
                 ${this.icon('file-text')} Section: ${this.escape(sec.section_name)}
               </span>
               <span style="font-size: 0.85rem; font-weight: 500; color: ${secDone > 0 ? 'var(--primary-color)' : 'var(--text-muted)'}; background: ${secDone > 0 ? 'rgba(37, 99, 235, 0.08)' : '#F1F5F9'}; padding: 3px 10px; border-radius: 4px; border: 1px solid var(--border-color);">
-                Done: ${secDone} | Tracked: ${secPos}
+                Done: ${secDone} | Positive / Abnormal: ${secPos}
               </span>
             </summary>
             <div style="padding: 16px;">
@@ -134,7 +134,7 @@
                     <th>Test Name</th>
                     <th style="width: 110px;">Surveillance</th>
                     <th style="width: 120px; text-align: right;">Done Count</th>
-                    <th style="width: 160px; text-align: center;">Tracked Findings</th>
+                    <th style="width: 160px; text-align: center;">Positive / Abnormal</th>
                     <th style="width: 130px; text-align: right;">Incidence Rate</th>
                   </tr>
                 </thead>

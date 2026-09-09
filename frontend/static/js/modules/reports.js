@@ -464,7 +464,7 @@
           <div class="kpi-value">${s.total_evaluated || 0}</div>
         </div>
         <div class="kpi-card" style="border-left: 4px solid var(--danger-color, #B91C1C);">
-          <div class="kpi-title">POSITIVE / INCIDENT CASES</div>
+          <div class="kpi-title">POSITIVE / ABNORMAL CASES</div>
           <div class="kpi-value" style="color: #B91C1C;">${s.total_incident_cases || 0}</div>
         </div>
         <div class="kpi-card">
@@ -498,7 +498,7 @@
             <tr>
               <th>Section Name</th>
               <th style="width: 140px; text-align: right;">Tests Evaluated</th>
-              <th style="width: 140px; text-align: right;">Positive / Incident</th>
+              <th style="width: 140px; text-align: right;">Positive / Abnormal</th>
               <th style="width: 140px; text-align: right;">Incidence Rate (%)</th>
             </tr>
           </thead>
@@ -536,7 +536,7 @@
               <th>Disease / Condition / Assay</th>
               <th style="width: 180px;">Section</th>
               <th style="width: 100px; text-align: right;">Evaluated</th>
-              <th style="width: 100px; text-align: right;">Positive</th>
+              <th style="width: 130px; text-align: right;">Positive / Abnormal</th>
               <th style="width: 100px; text-align: right;">Negative</th>
               <th style="width: 130px; text-align: right;">Incidence Rate (%)</th>
             </tr>

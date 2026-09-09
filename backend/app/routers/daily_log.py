@@ -6,7 +6,7 @@ from ..auth import get_current_user, require_admin
 
 router = APIRouter(prefix="/api/daily-log", tags=["Daily Log"])
 
-def is_daily_log_order_positive(test_name: str, results: list) -> bool:
+def is_daily_log_order_positive(test_name: str, results: list, crossmatches: list = None) -> bool:
     t_name_lower = (test_name or "").lower()
 
     # 1. CBC / Hematology panel
@@ -91,7 +91,68 @@ def is_daily_log_order_positive(test_name: str, results: list) -> bool:
             if "microscopy" in p_name and any(x in val_str for x in ["cyst", "trophozoite", "ova", "seen"]) and "no ova" not in val_str:
                 return True
 
-    # 5. Default / Single tests
+    # 5. Crossmatch & Compatibility testing
+    if crossmatches:
+        for cm in crossmatches:
+            c_stat = str(cm.get("compatibility_status") or "").upper()
+            if "INCOMPATIBLE" in c_stat or cm.get("failing_phase"):
+                return True
+
+    # 6. Blood HCG (>= 25 mIU/mL is positive)
+    if "hcg" in t_name_lower and ("blood" in t_name_lower or "serum" in t_name_lower or "b-hcg" in t_name_lower):
+        for res in results:
+            val_str = str(res["result_value"] or "").strip()
+            try:
+                val_num = float(val_str.split()[0].replace(">", "").replace("<", ""))
+                if val_num >= 25.0:
+                    return True
+            except (ValueError, TypeError):
+                if any(x in val_str.lower() for x in ["positive", "reactive"]):
+                    return True
+
+    # 7. CD4 (Absolute < 500 or < 200, CD4% < 25%, or RDT < 200)
+    if "cd4" in t_name_lower:
+        for res in results:
+            val_str = str(res["result_value"] or "").strip()
+            flag = (res["clinical_flag"] or "").strip().lower()
+            if flag in ["l", "l*", "critical", "panic", "abnormal"]:
+                return True
+            if "< 200" in val_str.lower() or "below 200" in val_str.lower():
+                return True
+            try:
+                num = float(val_str.replace("%", "").split()[0].replace(">", "").replace("<", ""))
+                if "percent" in t_name_lower or "%" in t_name_lower:
+                    if num < 25.0:
+                        return True
+                else:
+                    if num < 500.0:
+                        return True
+            except (ValueError, TypeError):
+                pass
+
+    # 8. ASO Titer (>= 200 IU/mL is abnormal/reactive)
+    if "aso" in t_name_lower:
+        for res in results:
+            val_str = str(res["result_value"] or "").strip()
+            flag = (res["clinical_flag"] or "").strip().lower()
+            if flag in ["h", "h*", "critical", "panic", "abnormal"]:
+                return True
+            try:
+                num = float(val_str.split()[0].replace(">", "").replace("<", ""))
+                if num >= 200.0:
+                    return True
+            except (ValueError, TypeError):
+                if any(x in val_str.lower() for x in ["positive", "reactive"]):
+                    return True
+
+    # 9. EID PCR & Rapid (Positive / Detected / Reactive)
+    if "eid" in t_name_lower:
+        for res in results:
+            val_str = str(res["result_value"] or "").strip().lower()
+            if any(x in val_str for x in ["positive", "detected", "reactive"]) and "not detected" not in val_str and "non-reactive" not in val_str:
+                return True
+
+    # 10. Default / Single tests
     for res in results:
         if res["is_positive"] == 1:
             return True
@@ -156,12 +217,26 @@ def get_daily_log(date_str: str = Query(..., alias="date"), conn: sqlite3.Connec
                 order_results_map[oid] = []
             order_results_map[oid].append(r)
 
+        # Also fetch donor crossmatches for compatibility evaluation
+        cur.execute(f"""
+            SELECT order_id, donor_unit_id, compatibility_status
+            FROM donor_crossmatches
+            WHERE order_id IN ({placeholders})
+        """, order_ids)
+        order_crossmatches_map = {}
+        for cm in cur.fetchall():
+            oid = cm["order_id"]
+            if oid not in order_crossmatches_map:
+                order_crossmatches_map[oid] = []
+            order_crossmatches_map[oid].append(dict(cm))
+
         for o in completed_orders:
             tid = o["test_id"]
             live_done_map[tid] = live_done_map.get(tid, 0) + 1
             if o["is_tracked"]:
                 results = order_results_map.get(o["order_id"], [])
-                if is_daily_log_order_positive(o["test_name"], results):
+                crossmatches = order_crossmatches_map.get(o["order_id"], [])
+                if is_daily_log_order_positive(o["test_name"], results, crossmatches):
                     live_pos_map[tid] = live_pos_map.get(tid, 0) + 1
 
     # 2. Fetch manual physical register backlog entries for this date

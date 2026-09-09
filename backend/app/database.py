@@ -877,6 +877,19 @@ def init_db():
     for tname, cname in STOCK_TRACKED_TESTS:
         cursor.execute("UPDATE tests SET tracks_stock = 1, consumable_name = ? WHERE LOWER(name) = LOWER(?)", (cname, tname))
 
+    # Migration: Update tracking status for expanded positive/abnormal criteria
+    TRACKED_TEST_UPDATES = [
+        ("HCG Blood", 1),
+        ("CD4 Percentage", 1),
+        ("ASO Titer (Anti-Streptolysin O)", 1),
+        ("EID 1st PCR (4-6 Weeks)", 1),
+        ("EID 2nd PCR (9 Months)", 1),
+        ("EID Final Rapid Test (18 Months)", 1),
+        ("Blood group (ABO & Rh typing)", 0),
+    ]
+    for t_name, trk in TRACKED_TEST_UPDATES:
+        cursor.execute("UPDATE tests SET is_tracked = ? WHERE LOWER(name) = LOWER(?)", (trk, t_name))
+
     conn.commit()
     conn.close()
     logger.info("Database schema initialized and migrated successfully")
