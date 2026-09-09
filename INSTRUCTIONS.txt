@@ -44,13 +44,16 @@ Step 2: Double-click "setup.bat"
 - Your patient and test database in the "data/" folder will NOT be affected.
 
 --------------------------------------------------------------------------------
-5. TROUBLESHOOTING
+5. TROUBLESHOOTING & SELF-HEALING
 --------------------------------------------------------------------------------
 - If setup.bat displays an error about Python:
-  Re-run your Python installer, click "Modify", and ensure "Add Python to PATH"
-  is enabled.
+  Select option 1 to specify python.exe path, or edit "python_env.bat" directly.
+- If dependencies fail or Python version differs:
+  The setup will run "Pre-Installation Check".
+  If connected to internet, select the online install option to fetch matching packages.
+  If offline, ensure target PC has Python 3.11 or 3.14 (64-bit).
 - If port 8756 is occupied:
   "run.bat" will automatically detect and clear any stuck ghost process on launch.
-- If you need assistance or review setup errors:
-  Open "setup_debug.log" in Notepad to view the installation log.
+- Review logs:
+  Open "setup_debug.log" in Notepad.
 ================================================================================

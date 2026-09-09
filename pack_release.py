@@ -65,6 +65,7 @@ def pack():
         "run.bat",
         "run.sh",
         "install.py",
+        "check_env.py",
         "INSTRUCTIONS.txt"
     ]
     for f in include_files:
