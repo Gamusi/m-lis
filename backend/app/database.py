@@ -171,6 +171,9 @@ SCHEMA_SQL = """
         lab_number TEXT UNIQUE,
         order_category TEXT DEFAULT 'in-house',
         specimen_type_id INTEGER REFERENCES specimen_types(id),
+        dispatched_at DATETIME,
+        dispatched_to TEXT,
+        dispatched_by_user_id INTEGER REFERENCES users(id),
         is_deleted BOOLEAN NOT NULL DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -539,7 +542,10 @@ def init_db():
         ("daily_entries", "in_house", "INTEGER NOT NULL DEFAULT 0"),
         ("daily_entries", "referral", "INTEGER NOT NULL DEFAULT 0"),
         ("daily_entries", "outreach", "INTEGER NOT NULL DEFAULT 0"),
-        ("daily_entries", "self_request", "INTEGER NOT NULL DEFAULT 0")
+        ("daily_entries", "self_request", "INTEGER NOT NULL DEFAULT 0"),
+        ("visits", "dispatched_at", "DATETIME"),
+        ("visits", "dispatched_to", "TEXT"),
+        ("visits", "dispatched_by_user_id", "INTEGER REFERENCES users(id)")
     ]
     for table, col, col_def in migrations:
         try:
