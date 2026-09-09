@@ -151,3 +151,33 @@ def test_backlog_inhouse_auto_totals_done(mock_db):
     assert t_saved["done"] == 10
     assert t_saved["in_house"] == 10
 
+def test_backlog_excludes_child_parameters(mock_db):
+    conn = mock_db["conn"]
+    cur = conn.cursor()
+    sec_id = mock_db["section_id"]
+    cbc_id = mock_db["cbc_id"]
+
+    # Insert sub-parameters with parent_rollup_id
+    cur.execute("INSERT INTO tests (name, section_id, is_active, is_tracked, parent_rollup_id) VALUES ('Neutrophils (%)', ?, 1, 0, ?)", (sec_id, cbc_id))
+    cur.execute("INSERT INTO tests (name, section_id, is_active, is_tracked, parent_rollup_id) VALUES ('Hemoglobin (Hb)', ?, 1, 0, ?)", (sec_id, cbc_id))
+
+    # Insert Urinalysis parent and child parameters
+    cur.execute("INSERT INTO tests (name, section_id, is_active, is_tracked, parent_rollup_id) VALUES ('URINALYSIS', ?, 1, 1, NULL)", (sec_id,))
+    uri_id = cur.lastrowid
+    cur.execute("INSERT INTO tests (name, section_id, is_active, is_tracked, parent_rollup_id) VALUES ('Color', ?, 1, 0, ?)", (sec_id, uri_id))
+    cur.execute("INSERT INTO tests (name, section_id, is_active, is_tracked, parent_rollup_id) VALUES ('Pus Cells (WBCs)', ?, 1, 0, ?)", (sec_id, uri_id))
+    conn.commit()
+
+    res = client.get("/api/backlog?date=2026-09-05")
+    assert res.status_code == 200
+    data = res.json()
+
+    all_names = [t["test_name"] for sec in data["sections"] for t in sec["tests"]]
+    assert "CBC" in all_names
+    assert "URINALYSIS" in all_names
+    assert "Neutrophils (%)" not in all_names
+    assert "Hemoglobin (Hb)" not in all_names
+    assert "Color" not in all_names
+    assert "Pus Cells (WBCs)" not in all_names
+
+

@@ -33,7 +33,7 @@ def get_backlog_for_date(
             e.entered_by_user_id, e.updated_at
         FROM tests t
         LEFT JOIN backlog_entries e ON e.test_id = t.id AND e.entry_date = ?
-        WHERE t.is_active = 1
+        WHERE t.is_active = 1 AND t.parent_rollup_id IS NULL
         ORDER BY t.section_id, t.sort_order, t.id
     """, (date_str,))
     all_tests = cur.fetchall()

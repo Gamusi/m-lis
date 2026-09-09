@@ -18,9 +18,9 @@ def test_qualitative_and_semi_qualitative_tests_tracking_configuration():
             assert is_tracked is True, f"{name} must be tracked"
             assert res_type in ("qualitative", "options", "panel")
 
-        # Standard biochemistry panels must be untracked by default
+        # Standard biochemistry panels tracking configuration
         if name in ("LFTS", "RFTS", "CARDIAC", "ELECTROLYTES"):
-            assert is_tracked is False, f"Panel {name} must be untracked by default"
+            assert is_tracked is True, f"Panel {name} must be tracked"
 
         # Surveillance glucometry and composite panels must be tracked
         if name in ("CBC", "URINALYSIS", "STOOL ANALYSIS", "FBS (Fasting Blood Sugar)", "RBS (Random Blood Sugar)"):

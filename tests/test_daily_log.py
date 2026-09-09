@@ -121,3 +121,93 @@ def test_daily_log_aggregates_live_orders_and_backlog(mock_db):
     # Overall today_check
     assert d2["today_check"]["total_done"] == 16
     assert d2["today_check"]["total_positive"] == 5
+
+def test_daily_log_multiparametric_rollup_and_sensitivity(mock_db):
+    conn = mock_db["conn"]
+    cur = conn.cursor()
+    date_str = "2026-08-10"
+
+    # Add child parameters to tests table (mimicking parent_rollup_id)
+    cur.execute("SELECT id FROM sections WHERE name = 'Hematology'")
+    sec_id = cur.fetchone()["id"]
+
+    cur.execute("INSERT INTO sections (name, sort_order) VALUES ('Urinalysis Profile', 2)")
+    uri_sec_id = cur.lastrowid
+
+    # CBC parent test already exists (mock_db['cbc_id'])
+    cbc_id = mock_db["cbc_id"]
+
+    # Insert CBC child sub-tests
+    cur.execute("INSERT INTO tests (name, section_id, is_active, is_tracked, parent_rollup_id) VALUES ('Hemoglobin (Hb)', ?, 1, 0, ?)", (sec_id, cbc_id))
+    hb_test_id = cur.lastrowid
+    cur.execute("INSERT INTO tests (name, section_id, is_active, is_tracked, parent_rollup_id) VALUES ('Neutrophils (%)', ?, 1, 0, ?)", (sec_id, cbc_id))
+    neutro_test_id = cur.lastrowid
+
+    # Urinalysis parent test
+    cur.execute("INSERT INTO tests (name, section_id, is_active, is_tracked, parent_rollup_id) VALUES ('URINALYSIS', ?, 1, 1, NULL)", (uri_sec_id,))
+    uri_id = cur.lastrowid
+
+    # Urinalysis child sub-tests
+    cur.execute("INSERT INTO tests (name, section_id, is_active, is_tracked, parent_rollup_id) VALUES ('Color', ?, 1, 0, ?)", (uri_sec_id, uri_id))
+    cur.execute("INSERT INTO tests (name, section_id, is_active, is_tracked, parent_rollup_id) VALUES ('Turbidity', ?, 1, 0, ?)", (uri_sec_id, uri_id))
+    cur.execute("INSERT INTO tests (name, section_id, is_active, is_tracked, parent_rollup_id) VALUES ('Pus Cells (WBCs)', ?, 1, 0, ?)", (uri_sec_id, uri_id))
+
+    # Also insert test_parameters
+    cur.execute("INSERT INTO test_parameters (test_id, parameter_name) VALUES (?, 'Hemoglobin (Hb)')", (cbc_id,))
+    hb_param_id = cur.lastrowid
+    cur.execute("INSERT INTO test_parameters (test_id, parameter_name) VALUES (?, 'Neutrophils (%)')", (cbc_id,))
+    neutro_param_id = cur.lastrowid
+    cur.execute("INSERT INTO test_parameters (test_id, parameter_name) VALUES (?, 'Pus Cells (WBCs)')", (uri_id,))
+    pus_param_id = cur.lastrowid
+    cur.execute("INSERT INTO test_parameters (test_id, parameter_name) VALUES (?, 'Color')", (uri_id,))
+    color_param_id = cur.lastrowid
+
+    # Create client & visit
+    cur.execute("INSERT INTO clients (client_number, full_name, sex) VALUES ('CLI-002', 'Rollup Client', 'Female')")
+    cli_id = cur.lastrowid
+    cur.execute("INSERT INTO visits (client_id, ward_of_origin, order_category, created_at) VALUES (?, 'GOPD', 'in-house', '2026-08-10 08:00:00')", (cli_id,))
+    vis_id = cur.lastrowid
+
+    # Order 1: CBC completed with low Hb (7.2 g/dL) -> should be positive
+    cur.execute("INSERT INTO test_orders (visit_id, test_id, status, ordered_at) VALUES (?, ?, 'completed', '2026-08-10 08:30:00')", (vis_id, cbc_id))
+    cbc_order_id = cur.lastrowid
+    cur.execute("INSERT INTO test_results (order_id, parameter_id, result_value, clinical_flag) VALUES (?, ?, '7.2 g/dL', 'L*')", (cbc_order_id, hb_param_id))
+    cur.execute("INSERT INTO test_results (order_id, parameter_id, result_value, clinical_flag) VALUES (?, ?, '65 %', 'Normal')", (cbc_order_id, neutro_param_id))
+
+    # Order 2: Urinalysis completed with Pus cells 10-15 / lpf -> should be positive
+    cur.execute("INSERT INTO test_orders (visit_id, test_id, status, ordered_at) VALUES (?, ?, 'completed', '2026-08-10 08:45:00')", (vis_id, uri_id))
+    uri_order_id = cur.lastrowid
+    cur.execute("INSERT INTO test_results (order_id, parameter_id, result_value, clinical_flag) VALUES (?, ?, 'Yellow', 'Normal')", (uri_order_id, color_param_id))
+    cur.execute("INSERT INTO test_results (order_id, parameter_id, result_value, clinical_flag) VALUES (?, ?, '10-15 / lpf', 'Abnormal')", (uri_order_id, pus_param_id))
+
+    conn.commit()
+
+    # Query daily log
+    res = client.get(f"/api/daily-log?date={date_str}")
+    assert res.status_code == 200
+    data = res.json()
+
+    # Collect all test names in response
+    all_returned_names = [t["test_name"] for sec in data["sections"] for t in sec["tests"]]
+
+    # Verify parent tests are present
+    assert "CBC" in all_returned_names
+    assert "URINALYSIS" in all_returned_names
+
+    # Verify child parameters are NOT in the test list
+    assert "Hemoglobin (Hb)" not in all_returned_names
+    assert "Neutrophils (%)" not in all_returned_names
+    assert "Color" not in all_returned_names
+    assert "Turbidity" not in all_returned_names
+    assert "Pus Cells (WBCs)" not in all_returned_names
+
+    # Verify CBC done = 1, positive = 1
+    t_cbc = next(t for sec in data["sections"] for t in sec["tests"] if t["test_id"] == cbc_id)
+    assert t_cbc["done"] == 1
+    assert t_cbc["positive"] == 1
+
+    # Verify Urinalysis done = 1, positive = 1
+    t_uri = next(t for sec in data["sections"] for t in sec["tests"] if t["test_id"] == uri_id)
+    assert t_uri["done"] == 1
+    assert t_uri["positive"] == 1
+

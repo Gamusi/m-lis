@@ -118,33 +118,40 @@
         }
 
         secContainer.innerHTML += `
-          <div style="margin-bottom: 24px;">
-            <h3 style="color: var(--primary-color); margin-bottom: 8px; font-size: 1rem; border-bottom: 2px solid var(--border-color); padding-bottom: 4px;">
-              Section: ${this.escape(sec.section_name)}
-            </h3>
-            <table class="data-table" data-section-id="${sec.section_id}">
-              <thead>
-                <tr>
-                  <th>Test Name</th>
-                  <th style="width: 110px;">Surveillance</th>
-                  <th style="width: 120px; text-align: right;">Done Count</th>
-                  <th style="width: 160px; text-align: center;">Tracked Findings</th>
-                  <th style="width: 130px; text-align: right;">Incidence Rate</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${rowsHtml}
-              </tbody>
-              <tfoot>
-                <tr style="background-color: #F8FAFC; font-weight: 700;">
-                  <td colspan="2">Subtotal &mdash; ${this.escape(sec.section_name)}</td>
-                  <td style="text-align: right;">${secDone}</td>
-                  <td style="text-align: center;">${secPos}</td>
-                  <td style="text-align: right;">${secRateStr}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+          <details class="card" ${secDone > 0 ? 'open' : ''} style="margin-bottom: 16px;">
+            <summary class="card-header" style="cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+              <span class="card-title" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                ${this.icon('file-text')} Section: ${this.escape(sec.section_name)}
+              </span>
+              <span style="font-size: 0.85rem; font-weight: 500; color: ${secDone > 0 ? 'var(--primary-color)' : 'var(--text-muted)'}; background: ${secDone > 0 ? 'rgba(37, 99, 235, 0.08)' : '#F1F5F9'}; padding: 3px 10px; border-radius: 4px; border: 1px solid var(--border-color);">
+                Done: ${secDone} | Tracked: ${secPos}
+              </span>
+            </summary>
+            <div style="padding: 16px;">
+              <table class="data-table" data-section-id="${sec.section_id}">
+                <thead>
+                  <tr>
+                    <th>Test Name</th>
+                    <th style="width: 110px;">Surveillance</th>
+                    <th style="width: 120px; text-align: right;">Done Count</th>
+                    <th style="width: 160px; text-align: center;">Tracked Findings</th>
+                    <th style="width: 130px; text-align: right;">Incidence Rate</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${rowsHtml}
+                </tbody>
+                <tfoot>
+                  <tr style="background-color: #F8FAFC; font-weight: 700;">
+                    <td colspan="2">Subtotal &mdash; ${this.escape(sec.section_name)}</td>
+                    <td style="text-align: right;">${secDone}</td>
+                    <td style="text-align: center;">${secPos}</td>
+                    <td style="text-align: right;">${secRateStr}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </details>
         `;
       });
     } catch (e) {
