@@ -666,9 +666,8 @@ const app = {
 
     nav.innerHTML = `
       <div class="user-badge">
-        ${this.icon('user')} <strong>${this.escape(this.currentUser.full_name)}</strong> (${this.escape(roleLabel)}${this.currentUser.cadre ? ' - ' + this.escape(this.currentUser.cadre) : ''})
+        ${this.icon('user')} <strong>${this.escape(this.currentUser.full_name)}</strong> (${this.escape(roleLabel)})
       </div>
-      <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="app.openShortcutsModal()" title="Keyboard Shortcuts (Alt+H or ?)">${this.icon('keyboard')} Shortcuts</button>
       <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.8rem;" onclick="app.handleLogout()">${this.icon('log-out')} Logout</button>
     `;
   },
