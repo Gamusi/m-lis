@@ -147,6 +147,11 @@
       submitBtn.textContent = 'Save Result';
       submitBtn.onclick = null;
     }
+    const saveNextBtn = document.getElementById('result-entry-save-next-btn');
+    if (saveNextBtn) {
+      saveNextBtn.style.display = 'none';
+      saveNextBtn.onclick = null;
+    }
     
     paramsContainer.style.display = 'none';
     singleContainer.style.display = 'block';
@@ -748,6 +753,38 @@
       }
     }
 
+    // Save & Next Test: Check if this visit has other pending test orders
+    let nextPendingOrder = null;
+    if (visitId && !isEdit) {
+      try {
+        const vRes = yield fetch(`/api/visits/${visitId}`);
+        if (vRes.ok) {
+          const vData = yield vRes.json();
+          if (vData.orders && vData.orders.length > 0) {
+            nextPendingOrder = vData.orders.find(o => o.order_id !== orderId && o.status === 'pending');
+          }
+        }
+      } catch (err) {
+        console.debug('Error checking next pending order for visit:', err);
+      }
+    }
+
+    if (saveNextBtn) {
+      if (nextPendingOrder) {
+        saveNextBtn.style.display = 'inline-block';
+        saveNextBtn.textContent = `Save & Next: ${nextPendingOrder.test_name}`;
+        const selfApp = this;
+        saveNextBtn.onclick = function() {
+          selfApp._shouldOpenNextPending = nextPendingOrder;
+          form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        };
+      } else {
+        saveNextBtn.style.display = 'none';
+        saveNextBtn.onclick = null;
+      }
+    }
+    this._shouldOpenNextPending = null;
+
     this.openModal('result-entry-modal');
     
     // Add keyboard navigation
@@ -988,17 +1025,25 @@
             }
          }
          
-         app.showNotificationModal("Success", "Result saved successfully!", false);
-         app.closeModal('result-entry-modal');
-         if (app.currentClientId) {
-            yield app.loadPendingTests(app.currentClientId);
-            yield app.loadHistoricalVisits(app.currentClientId);
-         }
-         // Also refresh the edit visit modal tests list if it's currently open
-         const editVisitId = (document.getElementById('edit-visit-id') ? document.getElementById('edit-visit-id').value : null);
-         if (editVisitId && (document.getElementById('edit-visit-modal') ? document.getElementById('edit-visit-modal').style.display : null) !== 'none') {
-           yield app.openEditVisitModal(parseInt(editVisitId, 10));
-         }
+          const nextPending = app._shouldOpenNextPending;
+          app._shouldOpenNextPending = null;
+
+          if (app.currentClientId) {
+             yield app.loadPendingTests(app.currentClientId);
+             yield app.loadHistoricalVisits(app.currentClientId);
+          }
+          // Also refresh the edit visit modal tests list if it's currently open
+          const editVisitId = (document.getElementById('edit-visit-id') ? document.getElementById('edit-visit-id').value : null);
+          if (editVisitId && (document.getElementById('edit-visit-modal') ? document.getElementById('edit-visit-modal').style.display : null) !== 'none') {
+            yield app.openEditVisitModal(parseInt(editVisitId, 10));
+          }
+
+          if (nextPending) {
+            yield app.showEnterResultModal(nextPending.order_id, nextPending.test_id, nextPending.test_name, '', '', visitId);
+          } else {
+            app.showNotificationModal("Success", "Result saved successfully!", false);
+            app.closeModal('result-entry-modal');
+          }
        } catch(err) {
          console.error('Error saving result:', err);
          app.showNotificationModal("Error", "Connection error saving result.", true);

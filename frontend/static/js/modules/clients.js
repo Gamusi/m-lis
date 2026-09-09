@@ -961,6 +961,16 @@
         const labNumStr = v.lab_number ? `(${this.escape(v.lab_number)})` : '(Pending Lab No)';
         const hasUnverified = v.unverified_count && v.unverified_count > 0;
         const hasSavedResults = (v.completed_count && v.completed_count > 0) || hasUnverified;
+        const isVerified = (v.completed_count && v.completed_count > 0) && !hasUnverified;
+        const isDispatched = !!v.dispatched_at;
+
+        let dispatchBadge = '';
+        if (isDispatched) {
+          const dTime = v.dispatched_at.substring(0, 16);
+          const dTo = v.dispatched_to ? ` to ${this.escape(v.dispatched_to)}` : '';
+          dispatchBadge = ` <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">Dispatched (${dTime}${dTo})</span>`;
+        }
+
         const statusBadge = hasUnverified 
           ? ` [Unverified]`
           : (hasSavedResults ? ` [Verified]` : '');
@@ -974,27 +984,47 @@
             ? `app.viewReport(${v.visit_id})` 
             : `app.openEditVisitModal(${v.visit_id})`;
 
-          html += `<div style="display: grid; grid-template-columns: 36px 3.5fr 1.3fr 1.1fr 1fr; gap: 8px; align-items: center; margin-bottom: 8px; width: 100%; max-width: 800px;">
+          let dispatchActionBtn = '';
+          if (isVerified) {
+            if (isDispatched) {
+              dispatchActionBtn = `<button class="btn btn-secondary btn-sm" style="padding: 4px 6px; font-size: 0.75rem;" onclick="app.revertDispatch(${v.visit_id})" title="Revert report dispatch">Revert Disp.</button>`;
+            } else {
+              dispatchActionBtn = `<button class="btn btn-success btn-sm" style="padding: 4px 6px; font-size: 0.75rem; font-weight: 600;" onclick="app.dispatchVisit(${v.visit_id})" title="Record report dispatch / collection">Dispatch</button>`;
+            }
+          }
+
+          html += `<div style="display: grid; grid-template-columns: 36px 3.2fr 1.2fr 1.1fr 0.9fr 0.8fr; gap: 6px; align-items: center; margin-bottom: 8px; width: 100%; max-width: 860px;">
                     <div style="text-align: center;">
                       <input type="checkbox" class="visit-checkbox" value="${v.visit_id}" onchange="app.onVisitSelectionChange()">
                     </div>
                     <button class="btn btn-secondary btn-sm" style="text-align: left; display: flex; align-items: center; justify-content: space-between;" onclick="${visitClick}">
-                      <span>Visit ${v.visit_id} ${labNumStr} - ${v.created_at.split(' ')[0]}</span>
+                      <span>Visit ${v.visit_id} ${labNumStr} - ${v.created_at.split(' ')[0]}${dispatchBadge}</span>
                       ${statusBadge}
                     </button>
                     ${verifyBtn}
+                    ${dispatchActionBtn ? dispatchActionBtn : '<div></div>'}
                     <button class="btn btn-primary btn-sm" onclick="app.showAddTestModal(${v.visit_id})">Add Tests</button>
                     <button class="btn btn-danger btn-sm" onclick="app.deleteVisit(${v.visit_id})">Delete</button>
                    </div>`;
         } else {
           const reportBtn = hasSavedResults && !hasUnverified
-            ? `<button class="btn btn-secondary btn-sm" style="text-align: left; display: flex; align-items: center; justify-content: space-between;" onclick="app.viewReport(${v.visit_id})"><span>Visit ${v.visit_id} ${labNumStr} - ${v.created_at.split(' ')[0]}</span> ${statusBadge}</button>`
-            : `<button class="btn btn-secondary btn-sm" style="text-align: left; color: #b45309; font-weight: 500; display: flex; align-items: center; justify-content: space-between;" onclick="app.openEditVisitModal(${v.visit_id})" title="Click to view and inspect results"><span>Visit ${v.visit_id} ${labNumStr} - ${v.created_at.split(' ')[0]}</span> ${statusBadge}</button>`;
-          const staffCols = !hasSavedResults ? '3.5fr 1.3fr 1.1fr 1fr' : '3.5fr 1.3fr 1.1fr';
+            ? `<button class="btn btn-secondary btn-sm" style="text-align: left; display: flex; align-items: center; justify-content: space-between;" onclick="app.viewReport(${v.visit_id})"><span>Visit ${v.visit_id} ${labNumStr} - ${v.created_at.split(' ')[0]}${dispatchBadge}</span> ${statusBadge}</button>`
+            : `<button class="btn btn-secondary btn-sm" style="text-align: left; color: #b45309; font-weight: 500; display: flex; align-items: center; justify-content: space-between;" onclick="app.openEditVisitModal(${v.visit_id})" title="Click to view and inspect results"><span>Visit ${v.visit_id} ${labNumStr} - ${v.created_at.split(' ')[0]}${dispatchBadge}</span> ${statusBadge}</button>`;
+          
+          let dispatchActionBtn = '';
+          if (isVerified) {
+            if (isDispatched) {
+              dispatchActionBtn = `<button class="btn btn-secondary btn-sm" style="padding: 4px 6px; font-size: 0.75rem;" onclick="app.revertDispatch(${v.visit_id})">Revert Disp.</button>`;
+            } else {
+              dispatchActionBtn = `<button class="btn btn-success btn-sm" style="padding: 4px 6px; font-size: 0.75rem; font-weight: 600;" onclick="app.dispatchVisit(${v.visit_id})">Dispatch</button>`;
+            }
+          }
+
+          const staffCols = !hasSavedResults ? '3.2fr 1.2fr 1.1fr 0.8fr' : '3.2fr 1.2fr 1.1fr';
           const deleteBtn = !hasSavedResults ? `<button class="btn btn-danger btn-sm" onclick="app.deleteVisit(${v.visit_id})">Delete</button>` : '';
-          html += `<div style="display: grid; grid-template-columns: ${staffCols}; gap: 8px; margin-bottom: 8px; width: 100%; max-width: 800px;">
+          html += `<div style="display: grid; grid-template-columns: ${staffCols}; gap: 6px; margin-bottom: 8px; width: 100%; max-width: 860px;">
                     ${reportBtn}
-                    <button class="btn btn-secondary btn-sm" onclick="app.openEditVisitModal(${v.visit_id})">View Details</button>
+                    ${dispatchActionBtn ? dispatchActionBtn : `<button class="btn btn-secondary btn-sm" onclick="app.openEditVisitModal(${v.visit_id})">View Details</button>`}
                     <button class="btn btn-primary btn-sm" onclick="app.showAddTestModal(${v.visit_id})">Add Tests</button>
                     ${deleteBtn}
                    </div>`;
@@ -1143,6 +1173,60 @@
     );
   }),
 
+  dispatchVisit: __async(function*(visitId) {
+    const recipient = prompt("Enter recipient for report dispatch (e.g. Patient, Ward Nurse, OPD, Clinician):", "Patient / Ward");
+    if (recipient === null) return;
+    try {
+      const res = yield fetch(`/api/visits/${visitId}/dispatch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dispatched_to: recipient || 'Patient / Ward' })
+      });
+      if (res.ok) {
+        this.showNotificationModal("Success", `Report dispatched to ${recipient || 'Patient / Ward'}!`, false);
+        if (this.currentClientId) {
+          yield this.loadHistoricalVisits(this.currentClientId);
+        }
+        const editModal = document.getElementById('edit-visit-modal');
+        if (editModal && editModal.style.display === 'flex') {
+          yield this.openEditVisitModal(visitId);
+        }
+      } else {
+        const err = yield res.json();
+        this.showNotificationModal("Error", err.detail || "Failed to dispatch report.", true);
+      }
+    } catch (e) {
+      this.showNotificationModal("Error", "Connection error dispatching report.", true);
+    }
+  }),
+
+  revertDispatch: __async(function*(visitId) {
+    this.confirmAction(
+      "Revert Report Dispatch",
+      "Are you sure you want to revert the dispatch status for this report?",
+      __async(function*() {
+        try {
+          const res = yield fetch(`/api/visits/${visitId}/dispatch`, { method: 'DELETE' });
+          if (res.ok) {
+            app.showNotificationModal("Success", "Report dispatch reverted successfully.", false);
+            if (app.currentClientId) {
+              yield app.loadHistoricalVisits(app.currentClientId);
+            }
+            const editModal = document.getElementById('edit-visit-modal');
+            if (editModal && editModal.style.display === 'flex') {
+              yield app.openEditVisitModal(visitId);
+            }
+          } else {
+            const err = yield res.json();
+            app.showNotificationModal("Error", err.detail || "Failed to revert dispatch.", true);
+          }
+        } catch (e) {
+          app.showNotificationModal("Error", "Connection error reverting dispatch.", true);
+        }
+      })
+    );
+  }),
+
   updateEditAgePlaceholder: function() {
     const cat = document.getElementById('edit-client-category').value;
     const ageInput = document.getElementById('edit-client-age');
@@ -1284,7 +1368,29 @@
           const isAdmin = this.currentUser && (this.currentUser.role === 'admin' || this.currentUser.role === 'superadmin');
           const hasUnverified = data.orders.some(o => o.status === 'entered');
           let oHtml = '';
-          if (isAdmin && hasUnverified) {
+          const allCompleted = data.orders.length > 0 && data.orders.every(o => o.status === 'completed');
+          const isDispatched = !!data.dispatched_at;
+
+          if (allCompleted) {
+            if (isDispatched) {
+              const dTime = data.dispatched_at.substring(0, 16);
+              const dTo = data.dispatched_to ? ` to ${this.escape(data.dispatched_to)}` : '';
+              const dBy = data.dispatched_by_name ? ` by ${this.escape(data.dispatched_by_name)}` : '';
+              oHtml += `
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; font-size: 0.875rem;">
+                  <div><strong>Report Dispatched:</strong> Handed over on ${dTime}${dTo}${dBy}.</div>
+                  <button type="button" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 0.8rem;" onclick="app.revertDispatch(${visitId})">Revert Dispatch</button>
+                </div>
+              `;
+            } else {
+              oHtml += `
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; font-size: 0.875rem;">
+                  <div><strong>Quality Verification Complete:</strong> All tests verified and released. Ready for dispatch / collection.</div>
+                  <button type="button" class="btn btn-success btn-sm" style="background:#15803d; border-color:#15803d; white-space:nowrap; padding:5px 12px; font-weight:600;" onclick="app.dispatchVisit(${visitId})">Record Report Dispatch</button>
+                </div>
+              `;
+            }
+          } else if (isAdmin && hasUnverified) {
             oHtml += `
               <div style="display: flex; justify-content: space-between; align-items: center; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; font-size: 0.875rem;">
                 <div><strong>Quality Review:</strong> Inspect test results below. Click <em>Verify</em> per test or <em>Verify All</em>.</div>
