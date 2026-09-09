@@ -132,9 +132,15 @@ def get_lots(
     rows = cur.fetchall()
 
     result = []
+    today = datetime.date.today()
     for r in rows:
         d = dict(r)
         d["status"] = compute_lot_status(d["expiry_date"], d["current_quantity"], d["min_threshold"])
+        try:
+            exp_date = datetime.date.fromisoformat(str(d["expiry_date"])[:10])
+            d["days_to_expiry"] = (exp_date - today).days
+        except Exception:
+            d["days_to_expiry"] = None
         result.append(d)
     return result
 

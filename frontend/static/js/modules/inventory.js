@@ -2,13 +2,20 @@
 (function(app) {
   Object.assign(app, {
   renderInventory: __async(function*(container) {
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const todayDate = now.toISOString().split('T')[0];
+
     container.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
         <div>
           <h2 style="color: var(--primary-color); margin: 0; font-size: 1.35rem;">Diagnostic Test Kit & Consumables Inventory</h2>
           <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 4px;">Track physical test kits, rapid strips, cassettes, and FEFO lot balances.</p>
         </div>
-        <div style="display: flex; gap: 10px;">
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <button class="btn btn-secondary" onclick="app.exportInventoryCSV()">
+            ${this.icon('download')} Export Stock Take CSV
+          </button>
           <button class="btn btn-secondary" id="btn-toggle-reconcile" onclick="app.toggleInventoryView('reconcile')">
             ${this.icon('refresh-cw')} Consumption Reconciliation
           </button>
@@ -45,8 +52,11 @@
 
         <!-- Active Lots Details Table -->
         <div class="card" style="margin-bottom: 20px;">
-          <div class="card-header">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
             <span class="card-title">${this.icon('clipboard-list')} Active Lot Ledger (FEFO Auto-Depletion Order)</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <input type="text" id="inventory-lot-search" placeholder="Search kit name or lot #..." oninput="app.filterInventoryLotsByText(this.value)" style="padding: 4px 10px; font-size: 0.85rem; border: 1px solid var(--border-color); border-radius: 4px; width: 220px;">
+            </div>
           </div>
           <div id="inventory-lots-container" style="padding: 16px; overflow-x: auto;">
             <p style="color: var(--text-muted);">Loading lot details...</p>
@@ -75,16 +85,16 @@
             <div style="display: flex; gap: 12px; align-items: flex-end; margin-bottom: 16px; flex-wrap: wrap;">
               <div class="form-group">
                 <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">From Date:</label>
-                <input type="date" id="reconcile-from-date" style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px;">
+                <input type="date" id="reconcile-from-date" value="${firstDayOfMonth}" style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px;">
               </div>
               <div class="form-group">
                 <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">To Date:</label>
-                <input type="date" id="reconcile-to-date" style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px;">
+                <input type="date" id="reconcile-to-date" value="${todayDate}" style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px;">
               </div>
               <button class="btn btn-primary btn-sm" onclick="app.loadInventoryReconciliation()" style="padding: 7px 16px;">Generate Reconciliation</button>
             </div>
             <div id="inventory-reconciliation-table-container">
-              <p style="color: var(--text-muted);">Select date range and click Generate Reconciliation.</p>
+              <p style="color: var(--text-muted);">Loading current month reconciliation...</p>
             </div>
           </div>
         </div>
@@ -216,57 +226,135 @@
       const res = yield fetch(url);
       if (!res.ok) throw new Error('API returned ' + res.status);
       const lots = yield res.json();
+      this.currentLots = lots;
 
-      if (lots.length === 0) {
-        container.innerHTML = '<p style="color: var(--text-muted); padding: 12px;">No active lots registered.</p>';
-        return;
-      }
-
-      let rows = '';
-      lots.forEach(l => {
-        let statusColor = '#166534';
-        if (l.status === 'Expired' || l.status === 'Depleted') statusColor = 'var(--danger-color)';
-        else if (l.status === 'Low Stock' || l.status === 'Near Expiry') statusColor = 'var(--warning-color)';
-
-        rows += `
-          <tr>
-            <td><code>${this.escape(l.lot_number)}</code></td>
-            <td><strong>${this.escape(l.kit_name)}</strong></td>
-            <td>${this.escape(l.category)}</td>
-            <td>${this.escape(l.expiry_date)}</td>
-            <td>${l.initial_quantity}</td>
-            <td><strong>${l.current_quantity}</strong></td>
-            <td style="font-weight: 600; color: ${statusColor};">${this.escape(l.status)}</td>
-            <td>
-              <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.8rem;" onclick="app.openAdjustStockModal(${l.id}, '${this.escape(l.kit_name)}', '${this.escape(l.lot_number)}', ${l.current_quantity})">
-                Adjust / Wastage
-              </button>
-            </td>
-          </tr>
-        `;
-      });
-
-      container.innerHTML = `
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Lot Number</th>
-              <th>Diagnostic Kit</th>
-              <th>Category</th>
-              <th>Expiry Date</th>
-              <th>Initial Qty</th>
-              <th>Current Balance</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
-      `;
+      const searchInput = document.getElementById('inventory-lot-search');
+      const term = searchInput ? searchInput.value.trim() : '';
+      this.renderLotsTable(lots, term);
     } catch (e) {
       container.innerHTML = '<p style="color: var(--danger-color);">Failed to load lot ledger.</p>';
     }
   }),
+
+  filterInventoryLotsByText: function(term) {
+    if (!this.currentLots) return;
+    this.renderLotsTable(this.currentLots, term || '');
+  },
+
+  renderLotsTable: function(lots, searchTerm) {
+    const container = document.getElementById('inventory-lots-container');
+    if (!container) return;
+
+    let filtered = lots;
+    if (searchTerm) {
+      const lower = searchTerm.toLowerCase();
+      filtered = lots.filter(l => 
+        (l.kit_name && l.kit_name.toLowerCase().indexOf(lower) !== -1) ||
+        (l.lot_number && l.lot_number.toLowerCase().indexOf(lower) !== -1) ||
+        (l.category && l.category.toLowerCase().indexOf(lower) !== -1)
+      );
+    }
+
+    if (filtered.length === 0) {
+      container.innerHTML = '<p style="color: var(--text-muted); padding: 12px;">No matching lots found.</p>';
+      return;
+    }
+
+    let rows = '';
+    filtered.forEach(l => {
+      let statusColor = '#166534';
+      if (l.status === 'Expired' || l.status === 'Depleted') statusColor = 'var(--danger-color)';
+      else if (l.status === 'Low Stock' || l.status === 'Near Expiry') statusColor = 'var(--warning-color)';
+
+      // Visual Days-to-Expiry Gauge
+      let expiryBadge = '';
+      if (l.days_to_expiry !== null && l.days_to_expiry !== undefined) {
+        if (l.days_to_expiry < 0) {
+          expiryBadge = `<div style="font-size: 0.75rem; color: var(--danger-color); font-weight: 600;">Expired (${Math.abs(l.days_to_expiry)}d ago)</div>`;
+        } else if (l.days_to_expiry <= 30) {
+          expiryBadge = `<div style="font-size: 0.75rem; color: var(--danger-color); font-weight: 600;">Critical: ${l.days_to_expiry} days left</div>`;
+        } else if (l.days_to_expiry <= 60) {
+          expiryBadge = `<div style="font-size: 0.75rem; color: var(--warning-color); font-weight: 600;">Warning: ${l.days_to_expiry} days left</div>`;
+        } else {
+          expiryBadge = `<div style="font-size: 0.75rem; color: #166534;">${l.days_to_expiry} days remaining</div>`;
+        }
+      }
+
+      rows += `
+        <tr>
+          <td><code>${this.escape(l.lot_number)}</code></td>
+          <td><strong>${this.escape(l.kit_name)}</strong></td>
+          <td>${this.escape(l.category)}</td>
+          <td>
+            <div>${this.escape(l.expiry_date)}</div>
+            ${expiryBadge}
+          </td>
+          <td style="text-align: right;">${l.initial_quantity}</td>
+          <td style="text-align: right;"><strong>${l.current_quantity}</strong></td>
+          <td style="font-weight: 600; color: ${statusColor};">${this.escape(l.status)}</td>
+          <td>
+            <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.8rem;" onclick="app.openAdjustStockModal(${l.id}, '${this.escape(l.kit_name)}', '${this.escape(l.lot_number)}', ${l.current_quantity})">
+              Adjust / Wastage
+            </button>
+          </td>
+        </tr>
+      `;
+    });
+
+    container.innerHTML = `
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Lot Number</th>
+            <th>Diagnostic Kit</th>
+            <th>Category</th>
+            <th>Expiry Date</th>
+            <th style="text-align: right; width: 100px;">Initial Qty</th>
+            <th style="text-align: right; width: 120px;">Current Balance</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  },
+
+  exportInventoryCSV: function() {
+    if (!this.currentLots || this.currentLots.length === 0) {
+      this.showNotificationModal("Notice", "No inventory lots currently loaded to export.", true);
+      return;
+    }
+
+    var csv = "Diagnostic Kit & Consumables Stock Take Ledger\n";
+    csv += "Export Date:," + new Date().toISOString().split('T')[0] + "\n\n";
+    csv += "Lot Number,Diagnostic Kit,Category,Expiry Date,Days Remaining,Initial Quantity,Current Balance,Status\n";
+
+    this.currentLots.forEach(function(l) {
+      var daysStr = (l.days_to_expiry !== null && l.days_to_expiry !== undefined) ? l.days_to_expiry : "";
+      var row = [
+        '"' + (l.lot_number || '').replace(/"/g, '""') + '"',
+        '"' + (l.kit_name || '').replace(/"/g, '""') + '"',
+        '"' + (l.category || '').replace(/"/g, '""') + '"',
+        '"' + (l.expiry_date || '').replace(/"/g, '""') + '"',
+        '"' + daysStr + '"',
+        l.initial_quantity || 0,
+        l.current_quantity || 0,
+        '"' + (l.status || '').replace(/"/g, '""') + '"'
+      ];
+      csv += row.join(",") + "\n";
+    });
+
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "MLIS_Stock_Take_" + new Date().toISOString().split('T')[0] + ".csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    this.showNotificationModal("Success", "Stock Take CSV exported successfully.", false);
+  },
 
   loadInventoryTransactions: __async(function*() {
     const container = document.getElementById('inventory-transactions-container');
