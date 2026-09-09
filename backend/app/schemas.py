@@ -232,10 +232,17 @@ class VisitResponse(BaseModel):
     ward_of_origin: Optional[str] = None
     lab_number: Optional[str] = None
     specimen_type_id: Optional[int] = None
+    dispatched_at: Optional[datetime.datetime] = None
+    dispatched_to: Optional[str] = None
+    dispatched_by_user_id: Optional[int] = None
+    dispatched_by_name: Optional[str] = None
     created_at: Optional[datetime.datetime] = None
 
     class Config:
         from_attributes = True
+
+class VisitDispatch(BaseModel):
+    dispatched_to: Optional[str] = 'Patient / Ward'
 
 class WardBase(BaseModel):
     name: str

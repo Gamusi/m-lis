@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from ..database import get_db
 from ..auth import get_current_user, require_admin
-from ..schemas import VisitCreate, TestResultCreate, AddOrdersRequest, ClientUpdate, BulkOrderDeleteRequest, BulkVisitDeleteRequest, BulkClientDeleteRequest, CrossmatchCreate, CrossmatchResponse
+from ..schemas import VisitCreate, TestResultCreate, AddOrdersRequest, ClientUpdate, BulkOrderDeleteRequest, BulkVisitDeleteRequest, BulkClientDeleteRequest, CrossmatchCreate, CrossmatchResponse, VisitDispatch
 from ..biochem_validator import validate_biochem_parameter, validate_panel_consistency
 from ..specimen_validator import validate_test_specimen_selection, get_compatible_specimens_for_test
 from ..evaluator import derive_hiv_outcome
@@ -1174,11 +1174,14 @@ def get_client_visits(client_id: int, conn: sqlite3.Connection = Depends(get_db)
     cur.execute("""
         SELECT 
             v.id as visit_id, v.ward_of_origin, v.clinician_id, v.lab_number, v.created_at,
+            v.dispatched_at, v.dispatched_to, v.dispatched_by_user_id,
             cl.name as clinician_name,
+            u_disp.full_name as dispatched_by_name,
             (SELECT COUNT(*) FROM test_orders o WHERE o.visit_id = v.id AND o.status = 'entered') as unverified_count,
             (SELECT COUNT(*) FROM test_orders o WHERE o.visit_id = v.id AND o.status = 'completed') as completed_count
         FROM visits v
         LEFT JOIN clinicians cl ON v.clinician_id = cl.id
+        LEFT JOIN users u_disp ON v.dispatched_by_user_id = u_disp.id
         WHERE v.client_id = ? AND v.is_deleted = 0
         ORDER BY v.id DESC
     """, (client_id,))
@@ -1191,11 +1194,14 @@ def get_visit_details(visit_id: int, conn: sqlite3.Connection = Depends(get_db),
     cur.execute("""
         SELECT 
             v.id as visit_id, v.ward_of_origin, v.lab_number, v.created_at,
+            v.dispatched_at, v.dispatched_to, v.dispatched_by_user_id,
             c.id as client_id, c.client_number, c.full_name, c.date_of_birth, c.age_years, c.sex, c.phone,
-            cl.id as clinician_id, cl.name as clinician_name
+            cl.id as clinician_id, cl.name as clinician_name,
+            u_disp.full_name as dispatched_by_name
         FROM visits v
         JOIN clients c ON v.client_id = c.id
         LEFT JOIN clinicians cl ON v.clinician_id = cl.id
+        LEFT JOIN users u_disp ON v.dispatched_by_user_id = u_disp.id
         WHERE v.id = ? AND v.is_deleted = 0
     """, (visit_id,))
     visit_row = cur.fetchone()
@@ -1427,6 +1433,64 @@ def verify_visit(
     )
     conn.commit()
     return {"status": "verified", "visit_id": visit_id, "verified_count": len(order_ids)}
+
+@router.post("/api/visits/{visit_id}/dispatch")
+def dispatch_visit(
+    visit_id: int,
+    payload: Optional[VisitDispatch] = None,
+    conn: sqlite3.Connection = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM visits WHERE id = ? AND is_deleted = 0", (visit_id,))
+    visit = cur.fetchone()
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+
+    dispatched_to = payload.dispatched_to if payload and payload.dispatched_to else "Patient / Ward"
+    dispatched_to = dispatched_to.strip() if dispatched_to else "Patient / Ward"
+
+    now_str = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    cur.execute(
+        "UPDATE visits SET dispatched_at = ?, dispatched_to = ?, dispatched_by_user_id = ? WHERE id = ?",
+        (now_str, dispatched_to, current_user["id"], visit_id)
+    )
+    cur.execute(
+        "INSERT INTO audit_log (user_id, action, detail, timestamp) VALUES (?, 'DISPATCH_REPORT', ?, ?)",
+        (current_user["id"], f"Dispatched report for visit ID {visit_id} to '{dispatched_to}'", now_str)
+    )
+    conn.commit()
+    return {
+        "status": "dispatched",
+        "visit_id": visit_id,
+        "dispatched_at": now_str,
+        "dispatched_to": dispatched_to,
+        "dispatched_by_user_id": current_user["id"]
+    }
+
+@router.delete("/api/visits/{visit_id}/dispatch")
+def revert_dispatch(
+    visit_id: int,
+    conn: sqlite3.Connection = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    cur = conn.cursor()
+    cur.execute("SELECT id, dispatched_at, dispatched_to FROM visits WHERE id = ? AND is_deleted = 0", (visit_id,))
+    visit = cur.fetchone()
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+
+    now_str = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    cur.execute(
+        "UPDATE visits SET dispatched_at = NULL, dispatched_to = NULL, dispatched_by_user_id = NULL WHERE id = ?",
+        (visit_id,)
+    )
+    cur.execute(
+        "INSERT INTO audit_log (user_id, action, detail, timestamp) VALUES (?, 'REVERT_DISPATCH', ?, ?)",
+        (current_user["id"], f"Reverted dispatch for visit ID {visit_id}", now_str)
+    )
+    conn.commit()
+    return {"status": "reverted", "visit_id": visit_id}
 
 @router.post("/api/clients/orders/{order_id}/crossmatch")
 def record_donor_crossmatch(
