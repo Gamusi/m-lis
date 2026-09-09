@@ -100,6 +100,7 @@ def calculate_operations_metrics(
             s.id AS section_id,
             s.name AS section_name,
             v.ward_of_origin,
+            v.dispatched_at,
             MIN(tr.entered_at) AS min_entered_at,
             MAX(tr.verified_at) AS max_verified_at
         FROM test_orders to_ord
@@ -118,6 +119,7 @@ def calculate_operations_metrics(
 
     total_done = len(order_rows)
     distinct_visits = set()
+    visit_dispatch_info: Dict[int, Dict[str, Any]] = {}
 
     # Section accumulators
     cur.execute("SELECT id, name FROM sections ORDER BY sort_order, id")
@@ -148,7 +150,19 @@ def calculate_operations_metrics(
     test_order_tallies: Dict[int, Dict[str, Any]] = {}
 
     for row in order_rows:
-        distinct_visits.add(row["visit_id"])
+        v_id = row["visit_id"]
+        distinct_visits.add(v_id)
+        if v_id not in visit_dispatch_info:
+            visit_dispatch_info[v_id] = {
+                "dispatched_at": row["dispatched_at"],
+                "min_ordered_at": row["ordered_at"],
+                "min_entered_at": row["min_entered_at"]
+            }
+        else:
+            if row["ordered_at"] and (not visit_dispatch_info[v_id]["min_ordered_at"] or row["ordered_at"] < visit_dispatch_info[v_id]["min_ordered_at"]):
+                visit_dispatch_info[v_id]["min_ordered_at"] = row["ordered_at"]
+            if row["min_entered_at"] and (not visit_dispatch_info[v_id]["min_entered_at"] or row["min_entered_at"] < visit_dispatch_info[v_id]["min_entered_at"]):
+                visit_dispatch_info[v_id]["min_entered_at"] = row["min_entered_at"]
 
         sec_id = row["section_id"]
         sec_name = row["section_name"] or ""
@@ -439,6 +453,40 @@ def calculate_operations_metrics(
 
     fy_grand_total = sum(monthly_totals)
 
+    # Dispatch & Clinical TAT Completion Metrics
+    total_period_visits = len(distinct_visits)
+    dispatched_visits = [v for v in visit_dispatch_info.values() if v["dispatched_at"]]
+    total_dispatched_visits = len(dispatched_visits)
+    dispatch_rate_pct = round((total_dispatched_visits / total_period_visits * 100.0), 1) if total_period_visits > 0 else 0.0
+
+    clinical_tats = []
+    dispatch_lags = []
+    for dv in dispatched_visits:
+        d_at = dv["dispatched_at"]
+        o_at = dv["min_ordered_at"]
+        e_at = dv["min_entered_at"]
+        if d_at and o_at:
+            cur.execute("SELECT (julianday(?) - julianday(?)) * 1440.0 AS diff_mins", (d_at, o_at))
+            dr = cur.fetchone()
+            if dr and dr["diff_mins"] is not None:
+                clinical_tats.append(max(0.0, float(dr["diff_mins"])))
+        if d_at and e_at:
+            cur.execute("SELECT (julianday(?) - julianday(?)) * 1440.0 AS diff_mins", (d_at, e_at))
+            dr = cur.fetchone()
+            if dr and dr["diff_mins"] is not None:
+                dispatch_lags.append(max(0.0, float(dr["diff_mins"])))
+
+    avg_clinical_tat_mins = round(sum(clinical_tats) / len(clinical_tats), 1) if clinical_tats else None
+    avg_dispatch_lag_mins = round(sum(dispatch_lags) / len(dispatch_lags), 1) if dispatch_lags else None
+
+    dispatch_metrics = {
+        "total_visits": total_period_visits,
+        "total_dispatched_visits": total_dispatched_visits,
+        "dispatch_rate_pct": dispatch_rate_pct,
+        "avg_clinical_tat_mins": avg_clinical_tat_mins,
+        "avg_dispatch_lag_mins": avg_dispatch_lag_mins
+    }
+
     return {
         "period": {
             "period_type": period_type,
@@ -454,6 +502,7 @@ def calculate_operations_metrics(
             "total_active_menu_items": total_active_menu_items,
             "unique_tests_ordered": unique_orderable_ordered
         },
+        "dispatch_metrics": dispatch_metrics,
         "categories_breakdown": categories_breakdown,
         "sections_breakdown": sections_breakdown,
         "wards_breakdown": wards_breakdown,
