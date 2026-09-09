@@ -24,7 +24,7 @@ def is_order_surveillance_incident(test_name: str, results: list, crossmatches: 
             p_name = (res["parameter_name"] or "").lower()
             val_str = str(res["result_value"] or "").strip()
             
-            if flag in ["l*", "h*", "critical", "panic", "critical low", "critical high", "abnormal", "h", "l"]:
+            if flag in ["l*", "h*", "critical", "panic", "critical low", "critical high"]:
                 return True
             
             if "hb" in p_name or "hemoglobin" in p_name:
