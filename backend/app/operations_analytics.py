@@ -57,6 +57,21 @@ def format_reporting_period(period_type: str, ref_date: datetime.date) -> str:
     else:
         return str(y)
 
+def _calc_diff_mins(ts_end: Optional[str], ts_start: Optional[str]) -> Optional[float]:
+    """Calculates difference in minutes between two ISO timestamp strings without SQL queries."""
+    if not ts_end or not ts_start:
+        return None
+    try:
+        # Normalize trailing Z if present and parse
+        s_end = ts_end.replace("Z", "").strip()
+        s_start = ts_start.replace("Z", "").strip()
+        dt_end = datetime.datetime.fromisoformat(s_end)
+        dt_start = datetime.datetime.fromisoformat(s_start)
+        diff = (dt_end - dt_start).total_seconds() / 60.0
+        return max(0.0, float(diff))
+    except Exception:
+        return None
+
 def calculate_operations_metrics(
     conn: sqlite3.Connection,
     period_type: str = "Month",
@@ -217,10 +232,8 @@ def calculate_operations_metrics(
         ordered_at = row["ordered_at"]
         entered_at = row["min_entered_at"]
         if ordered_at and entered_at:
-            cur.execute("SELECT (julianday(?) - julianday(?)) * 1440.0 AS diff_mins", (entered_at, ordered_at))
-            diff_row = cur.fetchone()
-            if diff_row and diff_row["diff_mins"] is not None:
-                tat_val = max(0.0, float(diff_row["diff_mins"]))
+            tat_val = _calc_diff_mins(entered_at, ordered_at)
+            if tat_val is not None:
                 section_stats[sec_id]["tats"].append(tat_val)
                 if tat_val <= sla_benchmark:
                     section_stats[sec_id]["on_time_count"] += 1
@@ -396,44 +409,53 @@ def calculate_operations_metrics(
             curr_m = 1
             curr_y += 1
 
+    fy_window_start = f"{trend_months[0][2]}-01"
+    fy_window_end = f"{trend_months[-1][0]}-06-30"
+
     section_names = [s["name"] for s in all_sections]
     section_matrix = {sn: [0]*12 for sn in section_names}
     monthly_totals = [0]*12
     monthly_trends_list = []
 
+    # Single bulk query for completed orders across full 12 months grouped by month & section
+    cur.execute("""
+        SELECT 
+            strftime('%Y-%m', to_ord.ordered_at) AS ym,
+            s.name AS section_name,
+            COUNT(to_ord.id) AS count_done
+        FROM test_orders to_ord
+        JOIN tests t ON to_ord.test_id = t.id
+        JOIN sections s ON t.section_id = s.id
+        WHERE to_ord.status = 'completed'
+          AND DATE(to_ord.ordered_at) >= ? AND DATE(to_ord.ordered_at) <= ?
+        GROUP BY ym, s.name
+    """, (fy_window_start, fy_window_end))
+    all_live_trends = {}
+    for r in cur.fetchall():
+        all_live_trends[(r["ym"], r["section_name"])] = r["count_done"]
+
+    # Single bulk query for backlog entries across full 12 months grouped by month & section
+    cur.execute("""
+        SELECT 
+            strftime('%Y-%m', b.entry_date) AS ym,
+            s.name AS section_name,
+            SUM(b.done) AS count_done
+        FROM backlog_entries b
+        JOIN tests t ON b.test_id = t.id
+        JOIN sections s ON t.section_id = s.id
+        WHERE b.entry_date >= ? AND b.entry_date <= ? AND b.done > 0
+        GROUP BY ym, s.name
+    """, (fy_window_start, fy_window_end))
+    all_backlog_trends = {}
+    for r in cur.fetchall():
+        all_backlog_trends[(r["ym"], r["section_name"])] = r["count_done"] or 0
+
     for month_idx, (ty, tm, tmonth_str, m_short) in enumerate(trend_months):
-        m_start = f"{tmonth_str}-01"
-        if tm == 12:
-            m_end = f"{ty}-12-31"
-        else:
-            m_end = (datetime.date(ty, tm + 1, 1) - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
-
-        cur.execute("""
-            SELECT s.name as section_name, COUNT(to_ord.id) as count_done
-            FROM test_orders to_ord
-            JOIN tests t ON to_ord.test_id = t.id
-            JOIN sections s ON t.section_id = s.id
-            WHERE to_ord.status = 'completed'
-              AND DATE(to_ord.ordered_at) >= ? AND DATE(to_ord.ordered_at) <= ?
-            GROUP BY s.name
-        """, (m_start, m_end))
-        m_live_results = {r["section_name"]: r["count_done"] for r in cur.fetchall()}
-
-        cur.execute("""
-            SELECT s.name as section_name, SUM(b.done) as count_done
-            FROM backlog_entries b
-            JOIN tests t ON b.test_id = t.id
-            JOIN sections s ON t.section_id = s.id
-            WHERE b.entry_date >= ? AND b.entry_date <= ? AND b.done > 0
-            GROUP BY s.name
-        """, (m_start, m_end))
-        m_backlog_results = {r["section_name"]: r["count_done"] for r in cur.fetchall()}
-
         month_label = datetime.date(ty, tm, 1).strftime("%b %Y")
         month_entry = {"month_key": tmonth_str, "month_label": month_label, "month_short": m_short, "total": 0}
         
         for sec_name in section_names:
-            v = m_live_results.get(sec_name, 0) + (m_backlog_results.get(sec_name, 0) or 0)
+            v = all_live_trends.get((tmonth_str, sec_name), 0) + all_backlog_trends.get((tmonth_str, sec_name), 0)
             section_matrix[sec_name][month_idx] = v
             month_entry[sec_name] = v
             month_entry["total"] += v
@@ -466,15 +488,13 @@ def calculate_operations_metrics(
         o_at = dv["min_ordered_at"]
         e_at = dv["min_entered_at"]
         if d_at and o_at:
-            cur.execute("SELECT (julianday(?) - julianday(?)) * 1440.0 AS diff_mins", (d_at, o_at))
-            dr = cur.fetchone()
-            if dr and dr["diff_mins"] is not None:
-                clinical_tats.append(max(0.0, float(dr["diff_mins"])))
+            c_tat = _calc_diff_mins(d_at, o_at)
+            if c_tat is not None:
+                clinical_tats.append(c_tat)
         if d_at and e_at:
-            cur.execute("SELECT (julianday(?) - julianday(?)) * 1440.0 AS diff_mins", (d_at, e_at))
-            dr = cur.fetchone()
-            if dr and dr["diff_mins"] is not None:
-                dispatch_lags.append(max(0.0, float(dr["diff_mins"])))
+            d_lag = _calc_diff_mins(d_at, e_at)
+            if d_lag is not None:
+                dispatch_lags.append(d_lag)
 
     avg_clinical_tat_mins = round(sum(clinical_tats) / len(clinical_tats), 1) if clinical_tats else None
     avg_dispatch_lag_mins = round(sum(dispatch_lags) / len(dispatch_lags), 1) if dispatch_lags else None

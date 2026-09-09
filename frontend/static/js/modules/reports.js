@@ -158,9 +158,12 @@
     var totClients = s.total_clients !== undefined ? s.total_clients : (s.total_visits || 0);
     var menuCov = s.menu_coverage_percent !== undefined ? s.menu_coverage_percent : (s.menu_fulfillment_rate_percent || 0);
 
-    // 1. 3 Clean KPI Cards (No subtext)
+    var disp = data.dispatch_metrics || {};
+    var dispRate = disp.dispatch_rate_pct !== undefined ? disp.dispatch_rate_pct : 0;
+
+    // 1. 4 Clean KPI Cards (No subtext, strictly adhering to Best Practices)
     var kpiHtml = `
-      <div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="kpi-grid" style="grid-template-columns: repeat(4, 1fr);">
         <div class="kpi-card">
           <div class="kpi-title">TOTAL DONE</div>
           <div class="kpi-value">${totDone}</div>
@@ -172,6 +175,10 @@
         <div class="kpi-card">
           <div class="kpi-title">TEST MENU COVERAGE</div>
           <div class="kpi-value">${menuCov}%</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">RESULTS DISPATCHED</div>
+          <div class="kpi-value">${dispRate}%</div>
         </div>
       </div>
     `;
@@ -214,12 +221,52 @@
       </div>
     `;
 
-    // 3. Priority & Ward of Origin Summary
-    var emergencyStatusText = em.has_emergency_data
-      ? `${em.stat_count} orders (Avg TAT: ${em.stat_avg_tat_mins}m)`
-      : '<span style="color: var(--text-muted); font-style: italic;">None recorded in this period</span>';
+    // 3. 12-Month Section Workload Trends Table
+    var trendsObj = data.monthly_trends || {};
+    var monthHeaders = trendsObj.month_headers || ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+    var matrixRows = trendsObj.matrix_rows || [];
+    var monthlyTotals = trendsObj.monthly_totals || [];
+    var grandTotal = trendsObj.grand_total || 0;
 
-    // 3. Ward of Origin & Test Category Breakdown
+    var trendsHeadCols = '<th style="text-align: left;">Section Name</th>';
+    monthHeaders.forEach(function(mh) {
+      trendsHeadCols += `<th style="text-align: right; width: 44px;">${app.escape(mh)}</th>`;
+    });
+    trendsHeadCols += '<th style="text-align: right; width: 60px;">Total</th>';
+
+    var trendsBodyRows = '';
+    matrixRows.forEach(function(mr) {
+      trendsBodyRows += `<tr><td><strong>${app.escape(mr.section_name)}</strong></td>`;
+      (mr.counts || []).forEach(function(cnt) {
+        trendsBodyRows += `<td style="text-align: right;">${cnt}</td>`;
+      });
+      trendsBodyRows += `<td style="text-align: right; font-weight: 700;">${mr.total}</td></tr>`;
+    });
+
+    var trendsFootCols = '<td><strong>Total Workload</strong></td>';
+    monthlyTotals.forEach(function(mt) {
+      trendsFootCols += `<td style="text-align: right; font-weight: 700;">${mt}</td>`;
+    });
+    trendsFootCols += `<td style="text-align: right; font-weight: 700; color: var(--primary-color);">${grandTotal}</td>`;
+
+    var trendsTableHtml = `
+      <div style="margin-bottom: 20px; overflow-x: auto;">
+        <h3 style="color: var(--primary-color); font-size: 0.95rem; margin-bottom: 8px; font-weight: 700;">12-Month Section Workload Trends</h3>
+        <table class="data-table">
+          <thead>
+            <tr>${trendsHeadCols}</tr>
+          </thead>
+          <tbody>
+            ${trendsBodyRows}
+          </tbody>
+          <tfoot>
+            <tr style="background: var(--bg-hover, #F1F5F9);">${trendsFootCols}</tr>
+          </tfoot>
+        </table>
+      </div>
+    `;
+
+    // 4. Ward of Origin & Test Category Breakdown
     var catRows = '';
     (data.categories_breakdown || []).forEach(function(c) {
       catRows += `
@@ -333,7 +380,7 @@
       </div>
     `;
 
-    container.innerHTML = kpiHtml + secTableHtml + twoColumnHtml;
+    container.innerHTML = kpiHtml + secTableHtml + trendsTableHtml + twoColumnHtml;
   },
 
   printOperationsPDF: function() {
