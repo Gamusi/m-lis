@@ -964,11 +964,11 @@
         const isVerified = (v.completed_count && v.completed_count > 0) && !hasUnverified;
         const isDispatched = !!v.dispatched_at;
 
-        let dispatchBadge = '';
+        let dispatchText = '';
         if (isDispatched) {
           const dTime = v.dispatched_at.substring(0, 16);
           const dTo = v.dispatched_to ? ` to ${this.escape(v.dispatched_to)}` : '';
-          dispatchBadge = ` <span style="background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">Dispatched (${dTime}${dTo})</span>`;
+          dispatchText = ` [Dispatched ${dTime}${dTo}]`;
         }
 
         const statusBadge = hasUnverified 
@@ -998,7 +998,7 @@
                       <input type="checkbox" class="visit-checkbox" value="${v.visit_id}" onchange="app.onVisitSelectionChange()">
                     </div>
                     <button class="btn btn-secondary btn-sm" style="text-align: left; display: flex; align-items: center; justify-content: space-between;" onclick="${visitClick}">
-                      <span>Visit ${v.visit_id} ${labNumStr} - ${v.created_at.split(' ')[0]}${dispatchBadge}</span>
+                      <span>Visit ${v.visit_id} ${labNumStr} - ${v.created_at.split(' ')[0]}${dispatchText}</span>
                       ${statusBadge}
                     </button>
                     ${verifyBtn}
@@ -1008,8 +1008,8 @@
                    </div>`;
         } else {
           const reportBtn = hasSavedResults && !hasUnverified
-            ? `<button class="btn btn-secondary btn-sm" style="text-align: left; display: flex; align-items: center; justify-content: space-between;" onclick="app.viewReport(${v.visit_id})"><span>Visit ${v.visit_id} ${labNumStr} - ${v.created_at.split(' ')[0]}${dispatchBadge}</span> ${statusBadge}</button>`
-            : `<button class="btn btn-secondary btn-sm" style="text-align: left; color: #b45309; font-weight: 500; display: flex; align-items: center; justify-content: space-between;" onclick="app.openEditVisitModal(${v.visit_id})" title="Click to view and inspect results"><span>Visit ${v.visit_id} ${labNumStr} - ${v.created_at.split(' ')[0]}${dispatchBadge}</span> ${statusBadge}</button>`;
+            ? `<button class="btn btn-secondary btn-sm" style="text-align: left; display: flex; align-items: center; justify-content: space-between;" onclick="app.viewReport(${v.visit_id})"><span>Visit ${v.visit_id} ${labNumStr} - ${v.created_at.split(' ')[0]}${dispatchText}</span> ${statusBadge}</button>`
+            : `<button class="btn btn-secondary btn-sm" style="text-align: left; color: #b45309; font-weight: 500; display: flex; align-items: center; justify-content: space-between;" onclick="app.openEditVisitModal(${v.visit_id})" title="Click to view and inspect results"><span>Visit ${v.visit_id} ${labNumStr} - ${v.created_at.split(' ')[0]}${dispatchText}</span> ${statusBadge}</button>`;
           
           let dispatchActionBtn = '';
           if (isVerified) {
